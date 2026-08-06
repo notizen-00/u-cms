@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/sdk/*
+  - plugins/*
+  - themes/*
+
+onlyBuiltDependencies:
+  - esbuild

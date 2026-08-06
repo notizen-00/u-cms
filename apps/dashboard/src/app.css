@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --radius: 0.375rem;
+
+  --background: #ffffff;
+  --foreground: #07152b;
+
+  --card: #ffffff;
+  --card-foreground: #07152b;
+
+  --popover: #ffffff;
+  --popover-foreground: #07152b;
+
+  --primary: #075985;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #12324d;
+
+  --muted: #f5f7fb;
+  --muted-foreground: #64748b;
+
+  --accent: #eef2ff;
+  --accent-foreground: #075985;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #dfe5ed;
+  --input: #cbd5e1;
+  --ring: #0284c7;
+
+  --success: #16a36a;
+  --success-foreground: #ffffff;
+
+  --warning: #f59e0b;
+  --warning-foreground: #1f2937;
+}
+
+/**
+ * Tailwind v4 only generates colour utilities for tokens registered here — plain
+ * `:root` variables are invisible to it. Without this block `bg-background`,
+ * `bg-card`, `bg-primary`, `border-border` … are never emitted, which left every
+ * dialog with no background at all (the overlay showed straight through it).
+ * `inline` keeps the utilities pointing at the var() so theme switching still works.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  html {
+    min-width: 320px;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    background: #f8f7ff;
+    color: #07152b;
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+  }
+}

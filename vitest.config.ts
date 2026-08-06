@@ -1,0 +1,12 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: [
+      "packages/**/src/**/*.test.ts",
+      "plugins/**/src/**/*.test.ts",
+      "themes/**/src/**/*.test.ts",
+    ],
+    environment: "node",
+  },
+});
