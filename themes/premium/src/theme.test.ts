@@ -38,6 +38,7 @@ describe("layout rendering (Eta)", () => {
       title: "Beranda",
       site,
       theme,
+      menus: {},
       body: "<p>halo</p>",
     });
     expect(html).toContain("<title>Beranda | Situs Uji</title>");

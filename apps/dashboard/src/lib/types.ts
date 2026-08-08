@@ -303,6 +303,60 @@ export interface MenuLocation {
 }
 
 /**
+ * Fixed design tokens a theme declares in source — mirrors @unej-cms/sdk-theme's
+ * ThemeTokens. Distinct from `PropertySchema`-driven `settings`, which are
+ * admin-editable per site; tokens are the theme author's own design
+ * decisions and have no dashboard editor.
+ */
+export interface ThemeColorTokens {
+	primary?: string;
+	secondary?: string;
+	background?: string;
+	foreground?: string;
+	muted?: string;
+	[key: string]: string | undefined;
+}
+
+export interface ThemeTypographyTokens {
+	heading?: string;
+	body?: string;
+	[key: string]: string | undefined;
+}
+
+export interface ThemeRadiusTokens {
+	card?: string;
+	button?: string;
+	[key: string]: string | undefined;
+}
+
+export interface ThemeLayoutTokens {
+	container?: string;
+	narrow?: string;
+	[key: string]: string | undefined;
+}
+
+export interface ThemeSpacingTokens {
+	section?: string;
+	[key: string]: string | undefined;
+}
+
+export interface ThemeTokens {
+	colors?: ThemeColorTokens;
+	typography?: ThemeTypographyTokens;
+	radius?: ThemeRadiusTokens;
+	layout?: ThemeLayoutTokens;
+	spacing?: ThemeSpacingTokens;
+}
+
+/** A named page template a theme exposes, mapping to one of its layouts — mirrors @unej-cms/sdk-theme's ThemeTemplateDefinition. */
+export interface ThemeTemplate {
+	id: string;
+	name: string;
+	layout: string;
+	description?: string;
+}
+
+/**
  * Official theme catalog entry (backend `src/modules/themes/`, `GET /themes`).
  * Same "official only, ship code, no marketplace" model as plugins — `id`
  * matches a `Site.themeId` value once applied via `PATCH /sites/:id/theme`.
@@ -318,6 +372,10 @@ export interface Theme {
 	settings?: PropertySchema;
 	/** Nav slots this theme renders — empty/absent means no menu can be assigned. */
 	menuLocations?: MenuLocation[];
+	/** Fixed design tokens this theme declares — empty/absent means no tokens beyond built-in defaults. */
+	tokens?: ThemeTokens;
+	/** Named page templates this theme exposes — empty/absent means only the theme's implicit default. */
+	templates?: ThemeTemplate[];
 }
 
 /** `GET /sites/:siteId/theme/settings` response — schema of the active theme plus its current (default-merged) values. */

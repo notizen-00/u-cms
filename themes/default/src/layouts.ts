@@ -22,6 +22,7 @@ export const layoutLayout = defineLayout<string>({
 <title><%= it.title %> | <%= it.site.name %></title>
 <% if (it.site.faviconUrl) { %><link rel="icon" href="<%= it.site.faviconUrl %>"><% } %>
 <style>
+<%~ it.tokensCss %>
 /* Style untuk blok kaya dari block editor admin. Class-class ini di-whitelist di
    ALLOWED_CLASSES pada eta-site-renderer.ts; menghapusnya membuat blok tampil polos. */
 .cms-button{display:inline-block;padding:.5em 1.1em;border-radius:.375rem;background:<%= it.theme.primaryColor %>;color:#fff;text-decoration:none;font-weight:500}

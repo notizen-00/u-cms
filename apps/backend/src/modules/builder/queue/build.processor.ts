@@ -20,10 +20,12 @@ import {
   sites,
   tags,
 } from '../../../database/schema';
+import { resolveThemeRenderKind } from '../../themes/theme-registry';
 import { SITE_BUILDS_QUEUE } from '../builder.constants';
 import { AtomicDeployService } from '../deploy/atomic-deploy.service';
 import { EtaSiteRenderer } from '../render/eta-site-renderer';
-import type { SiteRenderMenuItem } from '../render/site-renderer.types';
+import type { SiteRenderer, SiteRenderMenuItem } from '../render/site-renderer.types';
+import { SvelteSiteRenderer } from '../render/svelte-site-renderer';
 import type { SiteBuildJobData } from './build.producer';
 
 @Processor(SITE_BUILDS_QUEUE)
@@ -32,7 +34,8 @@ export class BuildProcessor extends WorkerHost {
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
-    private readonly renderer: EtaSiteRenderer,
+    private readonly etaRenderer: EtaSiteRenderer,
+    private readonly svelteRenderer: SvelteSiteRenderer,
     private readonly deploy: AtomicDeployService,
     private readonly config: AppConfigService,
   ) {
@@ -75,7 +78,9 @@ export class BuildProcessor extends WorkerHost {
       const menusByLocation = await this.buildMenus(siteId, publishedPages);
 
       const outputDir = await this.deploy.prepareReleaseDir(site.slug, buildId);
-      await this.renderer.render(outputDir, {
+      const renderer: SiteRenderer =
+        resolveThemeRenderKind(site.themeId) === 'svelte' ? this.svelteRenderer : this.etaRenderer;
+      await renderer.render(outputDir, {
         site: {
           id: site.id,
           name: site.name,

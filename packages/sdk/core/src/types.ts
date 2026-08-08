@@ -30,6 +30,7 @@ export type EventID = Brand<string, "EventID">;
 export type LayoutID = Brand<string, "LayoutID">;
 export type RegionID = Brand<string, "RegionID">;
 export type MenuLocationID = Brand<string, "MenuLocationID">;
+export type TemplateID = Brand<string, "TemplateID">;
 
 function brand<TBrand extends string>(value: string): Brand<string, TBrand> {
   return value as Brand<string, TBrand>;
@@ -52,6 +53,7 @@ export const toLayoutId = (value: string): LayoutID => brand<"LayoutID">(value);
 export const toRegionId = (value: string): RegionID => brand<"RegionID">(value);
 export const toMenuLocationId = (value: string): MenuLocationID =>
   brand<"MenuLocationID">(value);
+export const toTemplateId = (value: string): TemplateID => brand<"TemplateID">(value);
 
 /** Discriminated result type used throughout the SDK instead of throwing. */
 export type Result<TValue, TError = ValidationIssue[]> =

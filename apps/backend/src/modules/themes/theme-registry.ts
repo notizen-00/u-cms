@@ -1,23 +1,43 @@
 import { discoverThemes, type CmsTheme, type ThemeMetadata } from '@unej-cms/sdk-theme';
 import defaultTheme from '@unej-cms/theme-default';
 import premiumTheme from '@unej-cms/theme-premium';
+import universityTheme from '@unej-cms/theme-university';
+
+/** Which `SiteRenderer` implementation (see modules/builder/render/) knows how to interpret a theme's `layouts[].render`. */
+export type ThemeRenderKind = 'eta' | 'svelte';
+
+interface InstalledTheme {
+  readonly theme: CmsTheme<unknown>;
+  readonly renderKind: ThemeRenderKind;
+}
 
 // Official themes only, same philosophy as modules/plugins/plugin-registry.ts
 // ("Plugin hanya dari tim CMS", docs/PRD.md §9): adding a theme means
 // shipping its package under the monorepo's `themes/` workspace and
 // importing it here — one line per theme, never a runtime/user action.
 //
-// `CmsTheme<string>`: every theme this Runtime loads renders as a raw Eta
-// template string (see EtaSiteRenderer) — this Runtime's own convention, not
-// something the SDK mandates (TRender is opaque there).
-const INSTALLED_THEMES: readonly CmsTheme<string>[] = [defaultTheme, premiumTheme];
+// `renderKind` is this Runtime's own bookkeeping (not part of the SDK
+// contract): it tells BuildProcessor which SiteRenderer to hand the theme
+// to, since `CmsTheme<TRender>`'s `TRender` is erased to `unknown` once
+// themes of different kinds sit in one list together.
+const INSTALLED_THEMES: readonly InstalledTheme[] = [
+  { theme: defaultTheme as CmsTheme<unknown>, renderKind: 'eta' },
+  { theme: premiumTheme as CmsTheme<unknown>, renderKind: 'eta' },
+  { theme: universityTheme as CmsTheme<unknown>, renderKind: 'svelte' },
+];
 
 export const DEFAULT_THEME_ID: string = defaultTheme.manifest.id;
 
-export const THEME_CATALOG: readonly ThemeMetadata[] = discoverThemes(INSTALLED_THEMES);
+export const THEME_CATALOG: readonly ThemeMetadata[] = discoverThemes(
+  INSTALLED_THEMES.map((installed) => installed.theme),
+);
 
-export function findTheme(themeId: string): CmsTheme<string> | undefined {
-  return INSTALLED_THEMES.find((theme) => theme.manifest.id === themeId);
+function findInstalledTheme(themeId: string): InstalledTheme | undefined {
+  return INSTALLED_THEMES.find((installed) => installed.theme.manifest.id === themeId);
+}
+
+export function findTheme(themeId: string): CmsTheme<unknown> | undefined {
+  return findInstalledTheme(themeId)?.theme;
 }
 
 export function findThemeMetadata(themeId: string): ThemeMetadata | undefined {
@@ -25,6 +45,11 @@ export function findThemeMetadata(themeId: string): ThemeMetadata | undefined {
 }
 
 /** Falls back to the default theme so a build never crashes on an unknown/removed themeId. */
-export function resolveTheme(themeId: string): CmsTheme<string> {
+export function resolveTheme(themeId: string): CmsTheme<unknown> {
   return findTheme(themeId) ?? findTheme(DEFAULT_THEME_ID)!;
+}
+
+/** Falls back to "eta" (the default theme's kind) alongside `resolveTheme`'s own fallback. */
+export function resolveThemeRenderKind(themeId: string): ThemeRenderKind {
+  return findInstalledTheme(themeId)?.renderKind ?? findInstalledTheme(DEFAULT_THEME_ID)!.renderKind;
 }

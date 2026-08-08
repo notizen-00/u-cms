@@ -3,6 +3,8 @@ export * from "./layout.js";
 export * from "./style.js";
 export * from "./region.js";
 export * from "./menu-location.js";
+export * from "./tokens.js";
+export * from "./template.js";
 export * from "./theme.js";
 export * from "./registry.js";
 export * from "./loader.js";

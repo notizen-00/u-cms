@@ -21,6 +21,10 @@ export interface ThemeMetadata {
   readonly settings?: CmsTheme["settings"];
   /** Named nav slots this theme renders (e.g. "primary", "footer") — surfaced by the Dashboard's Menus screen so editors can assign a menu to one. */
   readonly menuLocations?: CmsTheme["menuLocations"];
+  /** Fixed design tokens this theme declares — see `CmsTheme.tokens`. */
+  readonly tokens?: CmsTheme["tokens"];
+  /** Named page templates this theme exposes — see `CmsTheme.templates`. */
+  readonly templates?: CmsTheme["templates"];
 }
 
 /** Extracts lightweight listing info from already-loaded theme modules. */
@@ -39,6 +43,8 @@ export function toThemeMetadata(theme: CmsTheme): ThemeMetadata {
     screenshot: manifest.screenshot,
     settings: theme.settings,
     menuLocations: theme.menuLocations,
+    tokens: theme.tokens,
+    templates: theme.templates,
   };
 }
 

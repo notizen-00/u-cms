@@ -400,7 +400,7 @@ export const layoutLayout = defineLayout<string>({
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><%= it.title %> | <%= it.site.name %></title>
 <% if (it.site.faviconUrl) { %><link rel="icon" href="<%= it.site.faviconUrl %>"><% } %>
-<style>${STYLES}</style>
+<style><%~ it.tokensCss %>${STYLES}</style>
 </head>
 <body>
 <header class="site-header">
