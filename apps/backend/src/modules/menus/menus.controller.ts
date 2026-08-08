@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import type { AuthenticatedUser } from '../auth/auth.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { SiteAdminGuard } from '../sites/guards/site-admin.guard';
 import { SiteMemberGuard } from '../sites/guards/site-member.guard';
@@ -28,8 +30,9 @@ export class MenusController {
   create(
     @Param('siteId') siteId: string,
     @Body(new ZodValidationPipe(createMenuSchema)) dto: CreateMenuDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.menusService.create(siteId, dto);
+    return this.menusService.create(siteId, dto, user.id);
   }
 
   @Patch(':menuId')
@@ -38,14 +41,19 @@ export class MenusController {
     @Param('siteId') siteId: string,
     @Param('menuId') menuId: string,
     @Body(new ZodValidationPipe(updateMenuSchema)) dto: UpdateMenuDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.menusService.update(siteId, menuId, dto);
+    return this.menusService.update(siteId, menuId, dto, user.id);
   }
 
   @Delete(':menuId')
   @UseGuards(SiteAdminGuard)
-  remove(@Param('siteId') siteId: string, @Param('menuId') menuId: string) {
-    return this.menusService.remove(siteId, menuId);
+  remove(
+    @Param('siteId') siteId: string,
+    @Param('menuId') menuId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.menusService.remove(siteId, menuId, user.id);
   }
 
   @Put(':menuId/items')
@@ -54,7 +62,8 @@ export class MenusController {
     @Param('siteId') siteId: string,
     @Param('menuId') menuId: string,
     @Body(new ZodValidationPipe(replaceMenuItemsSchema)) dto: ReplaceMenuItemsDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.menusService.replaceItems(siteId, menuId, dto.items);
+    return this.menusService.replaceItems(siteId, menuId, dto.items, user.id);
   }
 }

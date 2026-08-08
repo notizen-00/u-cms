@@ -7,7 +7,6 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -26,9 +25,10 @@ export const menus = pgTable(
     name: varchar('name', { length: 150 }).notNull(),
     // A theme-declared MenuLocationID (see @unej-cms/sdk-theme's
     // MenuLocationDefinition, e.g. "primary"/"footer") this menu renders
-    // into. Null = unassigned/draft menu. Postgres treats each NULL as
-    // distinct in a unique index, so any number of unassigned menus are
-    // allowed while a location can only ever hold one menu per site.
+    // into. Null = unassigned/draft menu. Multiple menus may share a
+    // location — the renderer concatenates all of them (in creation order)
+    // into that location's nav, so editors can split a big menu into several
+    // manageable ones without losing items off a "one menu per slot" limit.
     locationId: varchar('location_id', { length: 100 }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -38,7 +38,7 @@ export const menus = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex('menus_site_location_unique').on(table.siteId, table.locationId),
+    index('menus_site_location_idx').on(table.siteId, table.locationId),
   ],
 );
 

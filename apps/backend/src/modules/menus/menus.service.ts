@@ -1,15 +1,19 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, inArray, ne } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.module';
 import type { DrizzleDb } from '../../database/database.types';
 import { menuItems, menus, pages } from '../../database/schema';
+import { BuildProducer } from '../builder/queue/build.producer';
 import type { CreateMenuDto } from './dto/create-menu.dto';
 import type { MenuItemInput } from './dto/replace-menu-items.dto';
 import type { UpdateMenuDto } from './dto/update-menu.dto';
 
 @Injectable()
 export class MenusService {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    private readonly buildProducer: BuildProducer,
+  ) {}
 
   listForSite(siteId: string) {
     return this.db.select().from(menus).where(eq(menus.siteId, siteId)).orderBy(asc(menus.name));
@@ -26,37 +30,41 @@ export class MenusService {
     return { ...menu, items: buildTree(rows, null) };
   }
 
-  async create(siteId: string, dto: CreateMenuDto) {
-    await this.assertLocationFree(siteId, dto.locationId ?? null, null);
-
+  async create(siteId: string, dto: CreateMenuDto, triggeredByUserId: string) {
     const [created] = await this.db
       .insert(menus)
       .values({ siteId, name: dto.name, locationId: dto.locationId ?? null })
       .returning();
+
+    // A newly-created menu only affects the live site once it's assigned to
+    // a location — harmless (if slightly wasteful) to always rebuild, and
+    // it keeps this in lockstep with update/remove/replaceItems below
+    // instead of special-casing "does this change actually render anything."
+    await this.buildProducer.enqueue(siteId, triggeredByUserId);
     return created;
   }
 
-  async update(siteId: string, menuId: string, dto: UpdateMenuDto) {
+  async update(siteId: string, menuId: string, dto: UpdateMenuDto, triggeredByUserId: string) {
     await this.getOrThrow(siteId, menuId);
-    if (dto.locationId !== undefined) {
-      await this.assertLocationFree(siteId, dto.locationId, menuId);
-    }
 
     const [updated] = await this.db
       .update(menus)
       .set({ ...dto, updatedAt: new Date() })
       .where(and(eq(menus.id, menuId), eq(menus.siteId, siteId)))
       .returning();
+
+    await this.buildProducer.enqueue(siteId, triggeredByUserId);
     return updated;
   }
 
-  async remove(siteId: string, menuId: string) {
+  async remove(siteId: string, menuId: string, triggeredByUserId: string) {
     await this.getOrThrow(siteId, menuId);
     await this.db.delete(menus).where(and(eq(menus.id, menuId), eq(menus.siteId, siteId)));
+    await this.buildProducer.enqueue(siteId, triggeredByUserId);
     return { success: true };
   }
 
-  async replaceItems(siteId: string, menuId: string, items: MenuItemInput[]) {
+  async replaceItems(siteId: string, menuId: string, items: MenuItemInput[], triggeredByUserId: string) {
     await this.getOrThrow(siteId, menuId);
     await this.assertPagesBelongToSite(siteId, items);
 
@@ -95,6 +103,7 @@ export class MenusService {
       }
     });
 
+    await this.buildProducer.enqueue(siteId, triggeredByUserId);
     return this.getWithItems(siteId, menuId);
   }
 
@@ -108,22 +117,6 @@ export class MenusService {
       throw new NotFoundException('Menu not found');
     }
     return menu;
-  }
-
-  private async assertLocationFree(siteId: string, locationId: string | null, excludeMenuId: string | null) {
-    if (!locationId) return;
-
-    const conditions = [eq(menus.siteId, siteId), eq(menus.locationId, locationId)];
-    if (excludeMenuId) conditions.push(ne(menus.id, excludeMenuId));
-
-    const [existing] = await this.db
-      .select({ id: menus.id })
-      .from(menus)
-      .where(and(...conditions))
-      .limit(1);
-    if (existing) {
-      throw new ConflictException(`Lokasi menu "${locationId}" sudah dipakai menu lain.`);
-    }
   }
 
   private async assertPagesBelongToSite(siteId: string, items: MenuItemInput[]) {

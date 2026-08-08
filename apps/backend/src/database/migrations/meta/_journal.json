@@ -57,6 +57,13 @@
       "when": 1786165396485,
       "tag": "0007_add_menus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786166675268,
+      "tag": "0008_menus_location_not_unique",
+      "breakpoints": true
     }
   ]
 }

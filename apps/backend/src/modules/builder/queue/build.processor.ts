@@ -160,6 +160,8 @@ export class BuildProcessor extends WorkerHost {
    * Resolves each of the site's location-assigned menus into a nav tree
    * keyed by theme location id (see modules/menus/). Only menus assigned to
    * a location render anywhere — an unassigned menu is just a saved draft.
+   * More than one menu can share a location (editors split a big nav into
+   * several menus); their item trees are concatenated in creation order.
    */
   private async buildMenus(
     siteId: string,
@@ -168,7 +170,8 @@ export class BuildProcessor extends WorkerHost {
     const assignedMenus = await this.db
       .select()
       .from(menus)
-      .where(and(eq(menus.siteId, siteId), isNotNull(menus.locationId)));
+      .where(and(eq(menus.siteId, siteId), isNotNull(menus.locationId)))
+      .orderBy(asc(menus.createdAt));
     if (assignedMenus.length === 0) {
       return {};
     }
@@ -191,11 +194,9 @@ export class BuildProcessor extends WorkerHost {
 
     const result: Record<string, SiteRenderMenuItem[]> = {};
     for (const menu of assignedMenus) {
-      result[menu.locationId as string] = buildMenuTree(
-        itemsByMenu.get(menu.id) ?? [],
-        null,
-        pagesById,
-      );
+      const locationId = menu.locationId as string;
+      const tree = buildMenuTree(itemsByMenu.get(menu.id) ?? [], null, pagesById);
+      result[locationId] = [...(result[locationId] ?? []), ...tree];
     }
     return result;
   }

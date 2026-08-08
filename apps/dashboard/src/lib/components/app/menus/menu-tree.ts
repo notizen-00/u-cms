@@ -113,6 +113,73 @@ export function removeItem(items: EditableMenuItem[], tempId: string): EditableM
 	return [...items.slice(0, start), ...items.slice(end)];
 }
 
+/** tempIds of an item and everything nested under it — the set a "pick a parent" dropdown must exclude to avoid creating a cycle. */
+export function descendantIds(items: EditableMenuItem[], tempId: string): Set<string> {
+	const [start, end] = subtreeRange(items, tempId);
+	return new Set(items.slice(start, end).map((i) => i.tempId));
+}
+
+/**
+ * Moves an item (and its subtree) to be the last child of `newParentTempId`
+ * (or the last top-level item, if null) — the general-purpose move behind
+ * the item editor's "Induk" dropdown. `indentItem`/`outdentItem` above cover
+ * the common one-step cases with a friendlier default position; this covers
+ * jumping anywhere else in the tree.
+ */
+export function setParent(
+	items: EditableMenuItem[],
+	tempId: string,
+	newParentTempId: string | null
+): EditableMenuItem[] {
+	const self = items.find((i) => i.tempId === tempId);
+	if (!self || self.parentTempId === newParentTempId || tempId === newParentTempId) return items;
+	if (newParentTempId !== null && descendantIds(items, tempId).has(newParentTempId)) return items;
+
+	const [selfStart, selfEnd] = subtreeRange(items, tempId);
+	const selfBlock = items
+		.slice(selfStart, selfEnd)
+		.map((i) => (i.tempId === tempId ? { ...i, parentTempId: newParentTempId } : i));
+	const without = [...items.slice(0, selfStart), ...items.slice(selfEnd)];
+
+	const insertAt = newParentTempId === null ? without.length : subtreeRange(without, newParentTempId)[1];
+	return [...without.slice(0, insertAt), ...selfBlock, ...without.slice(insertAt)];
+}
+
+/**
+ * Drag-and-drop reorder: drops `tempId` immediately before `beforeTempId`.
+ * Only reorders within the dragged item's current parent — dropping onto an
+ * item under a different parent is a no-op, since reparenting has its own
+ * explicit controls (indent/outdent, the "Induk" dropdown) and inferring it
+ * from drop position is exactly the kind of fragile guess that turns a drag
+ * into an accidental restructure. `beforeTempId: null` drops at the end.
+ */
+export function reorderWithinParent(
+	items: EditableMenuItem[],
+	tempId: string,
+	beforeTempId: string | null
+): EditableMenuItem[] {
+	const self = items.find((i) => i.tempId === tempId);
+	if (!self || tempId === beforeTempId) return items;
+	if (beforeTempId !== null) {
+		const target = items.find((i) => i.tempId === beforeTempId);
+		if (!target || target.parentTempId !== self.parentTempId) return items;
+	}
+
+	const [selfStart, selfEnd] = subtreeRange(items, tempId);
+	const selfBlock = items.slice(selfStart, selfEnd);
+	const without = [...items.slice(0, selfStart), ...items.slice(selfEnd)];
+
+	let insertAt: number;
+	if (beforeTempId === null) {
+		const siblings = without.filter((i) => i.parentTempId === self.parentTempId);
+		insertAt = siblings.length === 0 ? without.length : subtreeRange(without, siblings[siblings.length - 1].tempId)[1];
+	} else {
+		insertAt = subtreeRange(without, beforeTempId)[0];
+	}
+
+	return [...without.slice(0, insertAt), ...selfBlock, ...without.slice(insertAt)];
+}
+
 export function updateItem(
 	items: EditableMenuItem[],
 	tempId: string,
