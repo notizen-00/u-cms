@@ -60,6 +60,10 @@ export const menuItems = pgTable(
     pageId: uuid('page_id').references(() => pages.id, { onDelete: 'set null' }),
     url: text('url'),
     newTab: boolean('new_tab').notNull().default(false),
+    // false = renders as plain text, purely to open its sub-menu on
+    // hover/focus — a WordPress-style "parent only" nav item, for items
+    // that exist just to group real, clickable children underneath them.
+    clickable: boolean('clickable').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

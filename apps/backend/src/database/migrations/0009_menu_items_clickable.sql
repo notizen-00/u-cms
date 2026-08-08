@@ -1,0 +1,1 @@
+ALTER TABLE "menu_items" ADD COLUMN "clickable" boolean DEFAULT true NOT NULL;

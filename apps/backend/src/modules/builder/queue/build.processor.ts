@@ -291,6 +291,7 @@ function buildMenuTree(
       label: row.label,
       url,
       newTab: row.newTab,
+      clickable: row.clickable,
       children: buildMenuTree(rows, row.id, pagesById),
     });
   }

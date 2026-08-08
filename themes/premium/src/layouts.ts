@@ -97,6 +97,14 @@ img { max-width: 100%; height: auto; display: block; }
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   text-decoration: none;
 }
+.main-nav .nav-item-label {
+  display: inline-block;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 14px;
+  cursor: default;
+}
 .main-nav .sub-menu {
   display: none;
   position: absolute;
@@ -116,8 +124,10 @@ img { max-width: 100%; height: auto; display: block; }
 .main-nav .sub-menu .sub-menu { top: -6px; left: 100%; }
 .main-nav .nav-item:hover > .sub-menu,
 .main-nav .nav-item:focus-within > .sub-menu { display: flex; }
-.main-nav .has-children > a::after { content: " ▾"; font-size: 0.65em; opacity: 0.6; }
-.main-nav .sub-menu .has-children > a::after { content: " ▸"; font-size: 0.65em; opacity: 0.6; }
+.main-nav .has-children > a::after,
+.main-nav .has-children > .nav-item-label::after { content: " ▾"; font-size: 0.65em; opacity: 0.6; }
+.main-nav .sub-menu .has-children > a::after,
+.main-nav .sub-menu .has-children > .nav-item-label::after { content: " ▸"; font-size: 0.65em; opacity: 0.6; }
 .footer-grid .sub-links { list-style: none; margin: 4px 0 0; padding-left: 14px; display: flex; flex-direction: column; gap: 10px; }
 
 /* Hero */
@@ -408,7 +418,11 @@ export const layoutLayout = defineLayout<string>({
       function renderNavItem(item) {
       %>
       <span class="nav-item<% if (item.children.length > 0) { %> has-children<% } %>">
+        <% if (item.clickable) { %>
         <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
+        <% } else { %>
+        <span class="nav-item-label"><%= item.label %></span>
+        <% } %>
         <% if (item.children.length > 0) { %>
         <span class="sub-menu">
           <% item.children.forEach(renderNavItem) %>
@@ -447,7 +461,11 @@ export const layoutLayout = defineLayout<string>({
           function renderFooterItem(item) {
           %>
           <li>
+            <% if (item.clickable) { %>
             <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
+            <% } else { %>
+            <span><%= item.label %></span>
+            <% } %>
             <% if (item.children.length > 0) { %>
             <ul class="sub-links">
               <% item.children.forEach(renderFooterItem) %>

@@ -17,6 +17,7 @@ export const menuItemInputSchema = z.object({
   pageId: z.string().uuid().nullable().optional(),
   url: z.string().trim().max(2000).nullable().optional(),
   newTab: z.boolean().optional().default(false),
+  clickable: z.boolean().optional().default(true),
 });
 
 export const replaceMenuItemsSchema = z.object({

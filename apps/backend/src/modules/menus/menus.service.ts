@@ -94,6 +94,7 @@ export class MenusService {
               pageId: item.type === 'page' ? (item.pageId ?? null) : null,
               url: item.type === 'custom' ? (item.url ?? null) : null,
               newTab: item.newTab ?? false,
+              clickable: item.clickable ?? true,
             })
             .returning({ id: menuItems.id });
 
@@ -142,6 +143,7 @@ export interface MenuItemRow {
   pageId: string | null;
   url: string | null;
   newTab: boolean;
+  clickable: boolean;
 }
 
 function buildTree(rows: MenuItemRow[], parentId: string | null): (MenuItemRow & { children: unknown[] })[] {

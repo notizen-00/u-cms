@@ -349,6 +349,8 @@ export interface MenuItem {
 	pageId: string | null;
 	url: string | null;
 	newTab: boolean;
+	/** false = renders as plain text, purely a dropdown trigger for its children. */
+	clickable: boolean;
 	children: MenuItem[];
 }
 
@@ -371,6 +373,7 @@ export interface MenuItemInput {
 	pageId?: string | null;
 	url?: string | null;
 	newTab?: boolean;
+	clickable?: boolean;
 }
 
 /** Mirrors @unej-cms/plugin-form-builder's FormFieldConfig (backend `src/modules/forms/`). */

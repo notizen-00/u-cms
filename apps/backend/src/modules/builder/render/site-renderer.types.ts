@@ -51,6 +51,8 @@ export interface SiteRenderMenuItem {
   label: string;
   url: string;
   newTab: boolean;
+  /** false = renders as plain text, purely a dropdown trigger for its children (see modules/menus/). */
+  clickable: boolean;
   children: SiteRenderMenuItem[];
 }
 

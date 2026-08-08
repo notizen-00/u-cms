@@ -107,7 +107,7 @@
 						<Input bind:value={item.label} placeholder="Label navigasi" class="h-8" />
 						{#if item.type === 'page'}
 							<p class="text-xs text-muted-foreground">Halaman: {pageLabel(item.pageId)}</p>
-						{:else}
+						{:else if item.clickable}
 							<Input
 								value={item.url ?? ''}
 								oninput={(e) => (item.url = (e.target as HTMLInputElement).value)}
@@ -115,9 +115,16 @@
 								class="h-8 font-mono text-xs"
 							/>
 						{/if}
+						<label class="flex items-start gap-1.5 text-xs text-muted-foreground">
+							<Checkbox
+								checked={!item.clickable}
+								onCheckedChange={(checked: boolean) => (item.clickable = !checked)}
+							/>
+							Hanya pemicu dropdown (tidak bisa diklik)
+						</label>
 						<div class="flex items-center gap-3">
 							<label class="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-								<Checkbox bind:checked={item.newTab} />
+								<Checkbox bind:checked={item.newTab} disabled={!item.clickable} />
 								Tab baru
 							</label>
 							<Select

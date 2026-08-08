@@ -9,6 +9,8 @@ export interface EditableMenuItem {
 	pageId: string | null;
 	url: string | null;
 	newTab: boolean;
+	/** false = renders as plain text, purely a dropdown trigger for its children. */
+	clickable: boolean;
 }
 
 /** Converts a saved menu's nested tree (already depth-first from the API) into the editor's flat model. Existing item ids double as tempIds — the backend replaces all rows wholesale on save, so it never needs to tell old and new ids apart. */
@@ -21,7 +23,8 @@ export function flattenTree(nodes: MenuItem[], parentTempId: string | null = nul
 			label: node.label,
 			pageId: node.pageId,
 			url: node.url,
-			newTab: node.newTab
+			newTab: node.newTab,
+			clickable: node.clickable
 		},
 		...flattenTree(node.children, node.id)
 	]);
@@ -235,6 +238,7 @@ export function toMenuItemInputs(items: EditableMenuItem[]): MenuItemInput[] {
 		label: item.label,
 		pageId: item.type === 'page' ? item.pageId : null,
 		url: item.type === 'custom' ? item.url : null,
-		newTab: item.newTab
+		newTab: item.newTab,
+		clickable: item.clickable
 	}));
 }

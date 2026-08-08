@@ -28,6 +28,7 @@
 	let checkedPageIds = $state<Set<string>>(new Set());
 	let customLabel = $state('');
 	let customUrl = $state('');
+	let customClickable = $state(true);
 
 	function togglePage(pageId: string, checked: boolean) {
 		const next = new Set(checkedPageIds);
@@ -47,28 +48,32 @@
 				label: page.title,
 				pageId: page.id,
 				url: null,
-				newTab: false
+				newTab: false,
+				clickable: true
 			}))
 		];
 		checkedPageIds = new Set();
 	}
 
 	function addCustomLink() {
-		if (!customUrl.trim()) return;
+		const label = customLabel.trim() || customUrl.trim();
+		if (!label) return;
 		items = [
 			...items,
 			{
 				tempId: crypto.randomUUID(),
 				parentTempId: null,
 				type: 'custom' as const,
-				label: customLabel.trim() || customUrl.trim(),
+				label,
 				pageId: null,
-				url: customUrl.trim(),
-				newTab: false
+				url: customClickable ? customUrl.trim() : null,
+				newTab: false,
+				clickable: customClickable
 			}
 		];
 		customLabel = '';
 		customUrl = '';
+		customClickable = true;
 	}
 </script>
 
@@ -168,13 +173,27 @@
 						{:else}
 							<div class="space-y-1.5">
 								<Label for="customLabel">Label</Label>
-								<Input id="customLabel" bind:value={customLabel} placeholder="mis. Kontak" />
+								<Input id="customLabel" bind:value={customLabel} placeholder="mis. Profil" />
 							</div>
-							<div class="space-y-1.5">
-								<Label for="customUrl">URL</Label>
-								<Input id="customUrl" bind:value={customUrl} placeholder="https://... atau /path" />
-							</div>
-							<Button type="button" size="sm" disabled={!customUrl.trim()} onclick={addCustomLink}>
+							<label class="flex items-start gap-2 text-xs text-muted-foreground">
+								<Checkbox checked={!customClickable} onCheckedChange={(checked: boolean) => (customClickable = !checked)} />
+								<span>
+									Hanya pemicu dropdown (tidak bisa diklik) — dipakai untuk menu induk yang cuma menampung sub-menu,
+									mis. "Profil" yang di bawahnya ada halaman-halaman yang bisa diklik.
+								</span>
+							</label>
+							{#if customClickable}
+								<div class="space-y-1.5">
+									<Label for="customUrl">URL</Label>
+									<Input id="customUrl" bind:value={customUrl} placeholder="https://... atau /path" />
+								</div>
+							{/if}
+							<Button
+								type="button"
+								size="sm"
+								disabled={customClickable ? !customUrl.trim() : !customLabel.trim()}
+								onclick={addCustomLink}
+							>
 								Tambah ke Menu
 							</Button>
 						{/if}
