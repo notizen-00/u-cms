@@ -53,6 +53,9 @@ importers:
       '@unej-cms/theme-default':
         specifier: workspace:*
         version: link:../../themes/default
+      '@unej-cms/theme-faculty':
+        specifier: workspace:*
+        version: link:../../themes/faculty
       '@unej-cms/theme-premium':
         specifier: workspace:*
         version: link:../../themes/premium
@@ -434,6 +437,28 @@ importers:
       eta:
         specifier: ^4.6.0
         version: 4.6.0
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.25)(tsx@4.23.9)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  themes/faculty:
+    dependencies:
+      '@unej-cms/sdk-core':
+        specifier: workspace:*
+        version: link:../../packages/sdk/core
+      '@unej-cms/sdk-theme':
+        specifier: workspace:*
+        version: link:../../packages/sdk/theme
+      '@unej-cms/sdk-ui':
+        specifier: workspace:*
+        version: link:../../packages/sdk/ui
+    devDependencies:
+      svelte:
+        specifier: ^5.56.1
+        version: 5.56.8(@typescript-eslint/types@8.66.0)
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.25)(tsx@4.23.9)(typescript@5.9.3)

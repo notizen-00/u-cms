@@ -38,6 +38,7 @@
     "@unej-cms/sdk-theme": "workspace:*",
     "@unej-cms/sdk-ui": "workspace:*",
     "@unej-cms/theme-default": "workspace:*",
+    "@unej-cms/theme-faculty": "workspace:*",
     "@unej-cms/theme-premium": "workspace:*",
     "@unej-cms/theme-university": "workspace:*",
     "argon2": "^0.45.1",

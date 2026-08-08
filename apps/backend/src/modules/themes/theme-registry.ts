@@ -1,5 +1,6 @@
 import { discoverThemes, type CmsTheme, type ThemeMetadata } from '@unej-cms/sdk-theme';
 import defaultTheme from '@unej-cms/theme-default';
+import facultyTheme from '@unej-cms/theme-faculty';
 import premiumTheme from '@unej-cms/theme-premium';
 import universityTheme from '@unej-cms/theme-university';
 
@@ -24,6 +25,7 @@ const INSTALLED_THEMES: readonly InstalledTheme[] = [
   { theme: defaultTheme as CmsTheme<unknown>, renderKind: 'eta' },
   { theme: premiumTheme as CmsTheme<unknown>, renderKind: 'eta' },
   { theme: universityTheme as CmsTheme<unknown>, renderKind: 'svelte' },
+  { theme: facultyTheme as CmsTheme<unknown>, renderKind: 'svelte' },
 ];
 
 export const DEFAULT_THEME_ID: string = defaultTheme.manifest.id;
