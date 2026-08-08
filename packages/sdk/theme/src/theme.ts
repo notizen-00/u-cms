@@ -1,9 +1,10 @@
 import { deepFreeze, validateBaseManifest } from "@unej-cms/sdk-core";
-import type { AssetDefinition, PropertySchema } from "@unej-cms/sdk-ui";
+import type { PropertySchema } from "@unej-cms/sdk-ui";
 import type { ThemeManifest } from "./manifest.js";
 import type { LayoutDefinition } from "./layout.js";
 import type { RegionDefinition } from "./region.js";
 import type { MenuLocationDefinition } from "./menu-location.js";
+import type { CmsStyle } from "./style.js";
 
 /**
  * Everything a theme declares, up front (Declarative Registration). A theme
@@ -18,7 +19,8 @@ export interface CmsTheme<TRender = unknown> {
   readonly menuLocations?: readonly MenuLocationDefinition[];
   /** Configurable options (colors, toggles, ...) surfaced in the Dashboard's theme settings panel. */
   readonly settings?: PropertySchema;
-  readonly assets?: readonly AssetDefinition[];
+  /** Separate stylesheet/script assets, emitted as their own files (asset/style/{css,js}/*). */
+  readonly styles?: readonly CmsStyle[];
 }
 
 export class ThemeDefinitionError extends Error {
