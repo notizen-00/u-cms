@@ -11,6 +11,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { FormsModule } from './modules/forms/forms.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
+import { MenusModule } from './modules/menus/menus.module';
 import { NewsModule } from './modules/news/news.module';
 import { PagesModule } from './modules/pages/pages.module';
 import { PluginsModule } from './modules/plugins/plugins.module';
@@ -41,6 +42,7 @@ import { UsersModule } from './modules/users/users.module';
     PluginsModule,
     ThemesModule,
     FormsModule,
+    MenusModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

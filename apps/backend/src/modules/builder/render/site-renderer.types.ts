@@ -47,9 +47,20 @@ export interface SiteRenderForm {
   successMessage: string;
 }
 
+export interface SiteRenderMenuItem {
+  label: string;
+  url: string;
+  newTab: boolean;
+  children: SiteRenderMenuItem[];
+}
+
 export interface SiteRenderData {
   site: SiteRenderSite;
   themeId: string;
+  /** Per-site overrides of the active theme's settings (see modules/themes/themes.service.ts) — merged over each field's schema default. */
+  themeSettings?: Record<string, unknown>;
+  /** Per-theme-location resolved nav trees (see modules/menus/) — keyed by the theme's own MenuLocationID, e.g. `menus.primary`. */
+  menus?: Record<string, SiteRenderMenuItem[]>;
   /** Browser-facing base URL of this API — see AppConfigService.apiPublicUrl. */
   apiBaseUrl: string;
   news: SiteRenderNewsItem[];

@@ -100,15 +100,15 @@ export class EtaSiteRenderer implements SiteRenderer {
     const layouts = new Map<string, string>(
       theme.layouts.map((layout) => [layout.id, layout.render]),
     );
-    const themeVars = resolveThemeVars(theme);
+    const themeVars = resolveThemeVars(theme, data.themeSettings);
     const formsById = new Map(data.forms.map((form) => [form.id, form]));
     const renderMarkdown = (markdown: string): string =>
       this.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
 
-    // `site`/`theme` are merged into every layout's data, not just the outer
-    // "layout" wrapper — a theme's body templates (e.g. a hero on "home")
-    // may reasonably want them too, and per-theme call sites shouldn't have
-    // to know which specific layouts need them.
+    // `site`/`theme`/`menus` are merged into every layout's data, not just
+    // the outer "layout" wrapper — a theme's body templates (e.g. a hero on
+    // "home") may reasonably want them too, and per-theme call sites
+    // shouldn't have to know which specific layouts need them.
     const renderLayout = (id: string, layoutData: Record<string, unknown>): string => {
       const template = layouts.get(id);
       if (!template) {
@@ -117,6 +117,7 @@ export class EtaSiteRenderer implements SiteRenderer {
       return this.eta.renderString(template, {
         site: data.site,
         theme: themeVars,
+        menus: data.menus ?? {},
         ...layoutData,
       }) as string;
     };
@@ -191,16 +192,24 @@ export class EtaSiteRenderer implements SiteRenderer {
 }
 
 /**
- * Flattens a theme's settings schema into `{ [settingKey]: defaultValue }` for
+ * Flattens a theme's settings schema into `{ [settingKey]: value }` for
  * template use as `it.theme.<key>` — generic across whatever settings a given
  * theme declares (no per-theme special-casing here; each theme's own layout
- * template only ever references the settings it itself declared).
+ * template only ever references the settings it itself declared). Per-site
+ * overrides (see modules/themes/themes.service.ts) win over schema defaults.
  */
-function resolveThemeVars(theme: CmsTheme<string>): Record<string, string | number | boolean> {
+function resolveThemeVars(
+  theme: CmsTheme<string>,
+  overrides?: Record<string, unknown>,
+): Record<string, string | number | boolean> {
   const vars: Record<string, string | number | boolean> = {};
   for (const [key, field] of Object.entries(theme.settings ?? {})) {
     if ('default' in field && field.default !== undefined) {
       vars[key] = field.default;
+    }
+    const override = overrides?.[key];
+    if (override !== undefined && (typeof override === 'string' || typeof override === 'number' || typeof override === 'boolean')) {
+      vars[key] = override;
     }
   }
   return vars;

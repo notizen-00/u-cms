@@ -12,6 +12,7 @@
 	import Image from '@lucide/svelte/icons/image';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import Menu from '@lucide/svelte/icons/menu';
 	import Newspaper from '@lucide/svelte/icons/newspaper';
 	import Palette from '@lucide/svelte/icons/palette';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -160,6 +161,12 @@
 				`/sites/${activeSite.id}/forms`,
 				'Formulir',
 				ClipboardList
+			)}
+
+			{@render navLink(
+				`/sites/${activeSite.id}/menus`,
+				'Menu',
+				Menu
 			)}
 
 			{@render navLink(

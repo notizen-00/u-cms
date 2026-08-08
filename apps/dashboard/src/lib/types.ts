@@ -225,6 +225,83 @@ export interface SitePlugin {
 	deactivatedAt: string | null;
 }
 
+/** Mirrors @unej-cms/sdk-ui's PropertyFieldSchema/PropertySchema — drives the dynamic theme settings form. */
+interface PropertyFieldBase {
+	label: string;
+	description?: string;
+	required?: boolean;
+}
+
+export interface StringField extends PropertyFieldBase {
+	type: 'string';
+	default?: string;
+	placeholder?: string;
+}
+
+export interface NumberField extends PropertyFieldBase {
+	type: 'number';
+	default?: number;
+	min?: number;
+	max?: number;
+	step?: number;
+}
+
+export interface BooleanField extends PropertyFieldBase {
+	type: 'boolean';
+	default?: boolean;
+}
+
+export interface SelectField extends PropertyFieldBase {
+	type: 'select';
+	options: { label: string; value: string }[];
+	default?: string;
+}
+
+export interface ColorField extends PropertyFieldBase {
+	type: 'color';
+	default?: string;
+}
+
+export interface MediaField extends PropertyFieldBase {
+	type: 'media';
+	accept?: string[];
+}
+
+export interface RichTextField extends PropertyFieldBase {
+	type: 'richtext';
+	default?: string;
+}
+
+export interface ArrayField extends PropertyFieldBase {
+	type: 'array';
+	items: PropertySchema;
+}
+
+export interface ObjectField extends PropertyFieldBase {
+	type: 'object';
+	properties: PropertySchema;
+}
+
+export type PropertyFieldSchema =
+	| StringField
+	| NumberField
+	| BooleanField
+	| SelectField
+	| ColorField
+	| MediaField
+	| RichTextField
+	| ArrayField
+	| ObjectField;
+
+export type PropertySchema = Record<string, PropertyFieldSchema>;
+
+/** A named nav slot a theme declares (e.g. "primary", "footer") — mirrors @unej-cms/sdk-theme's MenuLocationDefinition. */
+export interface MenuLocation {
+	id: string;
+	label: string;
+	description?: string;
+}
+
 /**
  * Official theme catalog entry (backend `src/modules/themes/`, `GET /themes`).
  * Same "official only, ship code, no marketplace" model as plugins — `id`
@@ -237,6 +314,63 @@ export interface Theme {
 	version: string;
 	author: string;
 	screenshot?: string;
+	/** Configurable options this theme declares — empty/absent means nothing to configure. */
+	settings?: PropertySchema;
+	/** Nav slots this theme renders — empty/absent means no menu can be assigned. */
+	menuLocations?: MenuLocation[];
+}
+
+/** `GET /sites/:siteId/theme/settings` response — schema of the active theme plus its current (default-merged) values. */
+export interface ThemeSettings {
+	themeId: string;
+	schema: PropertySchema;
+	values: Record<string, unknown>;
+}
+
+/** Mirrors backend `src/modules/menus/` — a saved custom navigation menu. */
+export interface Menu {
+	id: string;
+	siteId: string;
+	name: string;
+	locationId: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export type MenuItemType = 'page' | 'custom';
+
+/** A node in a menu's item tree, as returned by `GET /sites/:siteId/menus/:menuId`. */
+export interface MenuItem {
+	id: string;
+	parentId: string | null;
+	order: number;
+	type: MenuItemType;
+	label: string;
+	pageId: string | null;
+	url: string | null;
+	newTab: boolean;
+	children: MenuItem[];
+}
+
+export interface MenuWithItems extends Menu {
+	items: MenuItem[];
+}
+
+/**
+ * What the dashboard's menu editor sends to `PUT /sites/:siteId/menus/:menuId/items`.
+ * New items have no database id yet, so items reference each other by a
+ * client-generated `tempId`/`parentTempId` pair instead of a nested tree —
+ * see backend `dto/replace-menu-items.dto.ts` for why.
+ */
+export interface MenuItemInput {
+	tempId: string;
+	parentTempId: string | null;
+	order: number;
+	type: MenuItemType;
+	label: string;
+	pageId?: string | null;
+	url?: string | null;
+	newTab?: boolean;
 }
 
 /** Mirrors @unej-cms/plugin-form-builder's FormFieldConfig (backend `src/modules/forms/`). */

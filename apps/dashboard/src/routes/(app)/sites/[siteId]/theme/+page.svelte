@@ -8,6 +8,7 @@
 	import { canManageSite } from '$lib/permissions';
 	import Check from '@lucide/svelte/icons/check';
 	import Palette from '@lucide/svelte/icons/palette';
+	import Settings from '@lucide/svelte/icons/settings';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -37,6 +38,7 @@
 	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 		{#each data.themes as theme (theme.id)}
 			{@const isActive = theme.id === data.site.themeId}
+			{@const hasSettings = !!theme.settings && Object.keys(theme.settings).length > 0}
 			<Card class={isActive ? 'ring-2 ring-primary' : ''}>
 				<div class="flex aspect-video items-center justify-center border-b bg-muted">
 					{#if theme.screenshot}
@@ -60,7 +62,14 @@
 				{#if canManage}
 					<CardFooter>
 						{#if isActive}
-							<Button variant="outline" size="sm" disabled class="w-full">Sedang Diterapkan</Button>
+							<div class="flex w-full gap-2">
+								<Button variant="outline" size="sm" disabled class="flex-1">Sedang Diterapkan</Button>
+								{#if hasSettings}
+									<Button variant="outline" size="sm" href="/sites/{data.site.id}/theme/settings">
+										<Settings /> Pengaturan
+									</Button>
+								{/if}
+							</div>
 						{:else}
 							<form
 								method="POST"

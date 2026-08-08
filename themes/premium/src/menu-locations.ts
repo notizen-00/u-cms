@@ -5,3 +5,9 @@ export const primaryMenuLocation = defineMenuLocation({
   label: "Navigasi Utama",
   description: "Menu di header (region \"header\").",
 });
+
+export const footerMenuLocation = defineMenuLocation({
+  id: "footer",
+  label: "Tautan Footer",
+  description: "Daftar tautan di kolom \"Tautan\" pada footer (region \"footer\").",
+});

@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { PLUGIN_ID as FORM_BUILDER_PLUGIN_ID } from '@unej-cms/plugin-form-builder';
 import { AppConfigService } from '../../../config/app-config.service';
 import { DRIZZLE } from '../../../database/database.module';
@@ -10,6 +10,8 @@ import {
   builds,
   categories,
   forms,
+  menuItems,
+  menus,
   news,
   newsCategories,
   newsTags,
@@ -21,6 +23,7 @@ import {
 import { SITE_BUILDS_QUEUE } from '../builder.constants';
 import { AtomicDeployService } from '../deploy/atomic-deploy.service';
 import { EtaSiteRenderer } from '../render/eta-site-renderer';
+import type { SiteRenderMenuItem } from '../render/site-renderer.types';
 import type { SiteBuildJobData } from './build.producer';
 
 @Processor(SITE_BUILDS_QUEUE)
@@ -69,6 +72,7 @@ export class BuildProcessor extends WorkerHost {
         publishedNews,
       );
       const siteForms = await this.fetchActiveForms(siteId);
+      const menusByLocation = await this.buildMenus(siteId, publishedPages);
 
       const outputDir = await this.deploy.prepareReleaseDir(site.slug, buildId);
       await this.renderer.render(outputDir, {
@@ -80,6 +84,10 @@ export class BuildProcessor extends WorkerHost {
           faviconUrl: site.faviconUrl,
         },
         themeId: site.themeId,
+        themeSettings:
+          (site.settings as { themeSettings?: Record<string, Record<string, unknown>> } | null)
+            ?.themeSettings?.[site.themeId] ?? {},
+        menus: menusByLocation,
         apiBaseUrl: this.config.apiPublicUrl,
         news: newsWithTaxonomies,
         pages: publishedPages,
@@ -148,6 +156,50 @@ export class BuildProcessor extends WorkerHost {
     }));
   }
 
+  /**
+   * Resolves each of the site's location-assigned menus into a nav tree
+   * keyed by theme location id (see modules/menus/). Only menus assigned to
+   * a location render anywhere — an unassigned menu is just a saved draft.
+   */
+  private async buildMenus(
+    siteId: string,
+    publishedPages: Array<typeof pages.$inferSelect>,
+  ): Promise<Record<string, SiteRenderMenuItem[]>> {
+    const assignedMenus = await this.db
+      .select()
+      .from(menus)
+      .where(and(eq(menus.siteId, siteId), isNotNull(menus.locationId)));
+    if (assignedMenus.length === 0) {
+      return {};
+    }
+
+    const menuIds = assignedMenus.map((menu) => menu.id);
+    const items = await this.db
+      .select()
+      .from(menuItems)
+      .where(inArray(menuItems.menuId, menuIds))
+      .orderBy(asc(menuItems.order));
+
+    const itemsByMenu = new Map<string, typeof items>();
+    for (const item of items) {
+      const list = itemsByMenu.get(item.menuId) ?? [];
+      list.push(item);
+      itemsByMenu.set(item.menuId, list);
+    }
+
+    const pagesById = new Map(publishedPages.map((page) => [page.id, page]));
+
+    const result: Record<string, SiteRenderMenuItem[]> = {};
+    for (const menu of assignedMenus) {
+      result[menu.locationId as string] = buildMenuTree(
+        itemsByMenu.get(menu.id) ?? [],
+        null,
+        pagesById,
+      );
+    }
+    return result;
+  }
+
   private async attachTaxonomies(
     siteId: string,
     items: Array<typeof news.$inferSelect>,
@@ -211,4 +263,36 @@ export class BuildProcessor extends WorkerHost {
       tags: tagsByNews.get(item.id) ?? [],
     }));
   }
+}
+
+function buildMenuTree(
+  rows: Array<typeof menuItems.$inferSelect>,
+  parentId: string | null,
+  pagesById: Map<string, { slug: string; isHomepage: boolean }>,
+): SiteRenderMenuItem[] {
+  const nodes: SiteRenderMenuItem[] = [];
+
+  for (const row of rows) {
+    if (row.parentId !== parentId) continue;
+
+    let url: string;
+    if (row.type === 'page') {
+      const page = row.pageId ? pagesById.get(row.pageId) : undefined;
+      // Page unpublished/deleted since the menu was last saved — drop the
+      // item rather than link to a 404, same as the cms-form embed handling.
+      if (!page) continue;
+      url = page.isHomepage ? '/' : `/${page.slug}/`;
+    } else {
+      url = row.url ?? '#';
+    }
+
+    nodes.push({
+      label: row.label,
+      url,
+      newTab: row.newTab,
+      children: buildMenuTree(rows, row.id, pagesById),
+    });
+  }
+
+  return nodes;
 }

@@ -46,15 +46,34 @@ header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
 .cms-form-status{margin-top:.75em;font-size:.9em}
 .cms-form-status-success{color:#15803d}
 .cms-form-status-error{color:#b91c1c}
+.main-nav{display:flex;gap:1em;align-items:center;position:relative}
+.main-nav .nav-item{position:relative}
+.main-nav .sub-menu{display:none;position:absolute;top:100%;left:0;flex-direction:column;gap:.25em;background:#fff;border:1px solid #dfe5ed;border-radius:.375rem;padding:.5em;min-width:10em;z-index:10}
+.main-nav .nav-item:hover .sub-menu,.main-nav .nav-item:focus-within .sub-menu{display:flex}
 </style>
 </head>
 <body>
 <header>
 <% if (it.site.logoUrl) { %><img src="<%= it.site.logoUrl %>" alt="<%= it.site.name %>"><% } %>
 <h1><a href="/"><%= it.site.name %></a></h1>
-<nav>
+<nav class="main-nav">
+<% if (it.menus.primary && it.menus.primary.length > 0) { %>
+<% it.menus.primary.forEach(function(item) { %>
+<span class="nav-item">
+<a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
+<% if (item.children.length > 0) { %>
+<span class="sub-menu">
+<% item.children.forEach(function(child) { %>
+<a href="<%= child.url %>"<% if (child.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= child.label %></a>
+<% }) %>
+</span>
+<% } %>
+</span>
+<% }) %>
+<% } else { %>
 <a href="/">Beranda</a>
 <a href="/news/">Berita</a>
+<% } %>
 </nav>
 </header>
 <main>

@@ -36,6 +36,7 @@
     "@unej-cms/plugin-form-builder": "workspace:*",
     "@unej-cms/sdk-plugin": "workspace:*",
     "@unej-cms/sdk-theme": "workspace:*",
+    "@unej-cms/sdk-ui": "workspace:*",
     "@unej-cms/theme-default": "workspace:*",
     "@unej-cms/theme-premium": "workspace:*",
     "argon2": "^0.45.1",

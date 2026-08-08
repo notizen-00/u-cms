@@ -47,6 +47,9 @@ importers:
       '@unej-cms/sdk-theme':
         specifier: workspace:*
         version: link:../../packages/sdk/theme
+      '@unej-cms/sdk-ui':
+        specifier: workspace:*
+        version: link:../../packages/sdk/ui
       '@unej-cms/theme-default':
         specifier: workspace:*
         version: link:../../themes/default

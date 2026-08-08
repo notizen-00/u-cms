@@ -4,6 +4,7 @@ export * from './enums';
 export * from './forms.schema';
 export * from './login-history.schema';
 export * from './media.schema';
+export * from './menus.schema';
 export * from './news-categories.schema';
 export * from './news-tags.schema';
 export * from './news.schema';

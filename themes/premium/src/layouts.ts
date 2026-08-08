@@ -82,7 +82,8 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .brand img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
 .brand:hover { text-decoration: none; }
-.main-nav { display: flex; gap: 4px; }
+.main-nav { display: flex; gap: 4px; align-items: center; }
+.main-nav .nav-item { position: relative; }
 .main-nav a {
   color: var(--muted);
   font-weight: 600;
@@ -96,6 +97,23 @@ img { max-width: 100%; height: auto; display: block; }
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   text-decoration: none;
 }
+.main-nav .sub-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 180px;
+  box-shadow: 0 16px 32px -20px rgba(15, 23, 42, 0.35);
+  z-index: 30;
+}
+.main-nav .nav-item:hover .sub-menu,
+.main-nav .nav-item:focus-within .sub-menu { display: flex; }
 
 /* Hero */
 .hero {
@@ -377,8 +395,23 @@ export const layoutLayout = defineLayout<string>({
       <span><%= it.site.name %></span>
     </a>
     <nav class="main-nav">
+      <% if (it.menus.primary && it.menus.primary.length > 0) { %>
+      <% it.menus.primary.forEach(function(item) { %>
+      <span class="nav-item">
+        <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
+        <% if (item.children.length > 0) { %>
+        <span class="sub-menu">
+          <% item.children.forEach(function(child) { %>
+          <a href="<%= child.url %>"<% if (child.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= child.label %></a>
+          <% }) %>
+        </span>
+        <% } %>
+      </span>
+      <% }) %>
+      <% } else { %>
       <a href="/">Beranda</a>
       <a href="/news/">Berita</a>
+      <% } %>
     </nav>
   </div>
 </header>
@@ -395,8 +428,14 @@ export const layoutLayout = defineLayout<string>({
       <div>
         <h4>Tautan</h4>
         <ul>
+          <% if (it.menus.footer && it.menus.footer.length > 0) { %>
+          <% it.menus.footer.forEach(function(item) { %>
+          <li><a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a></li>
+          <% }) %>
+          <% } else { %>
           <li><a href="/">Beranda</a></li>
           <li><a href="/news/">Berita</a></li>
+          <% } %>
         </ul>
       </div>
     </div>
