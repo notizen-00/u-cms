@@ -112,8 +112,13 @@ img { max-width: 100%; height: auto; display: block; }
   box-shadow: 0 16px 32px -20px rgba(15, 23, 42, 0.35);
   z-index: 30;
 }
-.main-nav .nav-item:hover .sub-menu,
-.main-nav .nav-item:focus-within .sub-menu { display: flex; }
+.main-nav .sub-menu .nav-item { width: 100%; }
+.main-nav .sub-menu .sub-menu { top: -6px; left: 100%; }
+.main-nav .nav-item:hover > .sub-menu,
+.main-nav .nav-item:focus-within > .sub-menu { display: flex; }
+.main-nav .has-children > a::after { content: " ▾"; font-size: 0.65em; opacity: 0.6; }
+.main-nav .sub-menu .has-children > a::after { content: " ▸"; font-size: 0.65em; opacity: 0.6; }
+.footer-grid .sub-links { list-style: none; margin: 4px 0 0; padding-left: 14px; display: flex; flex-direction: column; gap: 10px; }
 
 /* Hero */
 .hero {
@@ -396,18 +401,24 @@ export const layoutLayout = defineLayout<string>({
     </a>
     <nav class="main-nav">
       <% if (it.menus.primary && it.menus.primary.length > 0) { %>
-      <% it.menus.primary.forEach(function(item) { %>
-      <span class="nav-item">
+      <%
+      /* Recursive so a sub-menu item can itself have a sub-menu (unlimited
+         depth) — see MenuStructureEditor's "Induk"/sub-menu picker in the
+         dashboard, which lets editors nest items arbitrarily deep. */
+      function renderNavItem(item) {
+      %>
+      <span class="nav-item<% if (item.children.length > 0) { %> has-children<% } %>">
         <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
         <% if (item.children.length > 0) { %>
         <span class="sub-menu">
-          <% item.children.forEach(function(child) { %>
-          <a href="<%= child.url %>"<% if (child.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= child.label %></a>
-          <% }) %>
+          <% item.children.forEach(renderNavItem) %>
         </span>
         <% } %>
       </span>
-      <% }) %>
+      <%
+      }
+      it.menus.primary.forEach(renderNavItem);
+      %>
       <% } else { %>
       <a href="/">Beranda</a>
       <a href="/news/">Berita</a>
@@ -429,9 +440,24 @@ export const layoutLayout = defineLayout<string>({
         <h4>Tautan</h4>
         <ul>
           <% if (it.menus.footer && it.menus.footer.length > 0) { %>
-          <% it.menus.footer.forEach(function(item) { %>
-          <li><a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a></li>
-          <% }) %>
+          <%
+          /* A footer link list has no hover affordance for a dropdown, so
+             nested items render as an indented sub-list instead — same
+             recursion as the header nav, different presentation. */
+          function renderFooterItem(item) {
+          %>
+          <li>
+            <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
+            <% if (item.children.length > 0) { %>
+            <ul class="sub-links">
+              <% item.children.forEach(renderFooterItem) %>
+            </ul>
+            <% } %>
+          </li>
+          <%
+          }
+          it.menus.footer.forEach(renderFooterItem);
+          %>
           <% } else { %>
           <li><a href="/">Beranda</a></li>
           <li><a href="/news/">Berita</a></li>

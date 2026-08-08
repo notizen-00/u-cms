@@ -119,6 +119,17 @@ export function descendantIds(items: EditableMenuItem[], tempId: string): Set<st
 	return new Set(items.slice(start, end).map((i) => i.tempId));
 }
 
+/** tempIds of an item's parent, grandparent, etc. — the set a "pick items to nest under this one" picker must exclude, since making an ancestor your child would create a cycle. */
+export function ancestorIds(items: EditableMenuItem[], tempId: string): Set<string> {
+	const ids = new Set<string>();
+	let current = items.find((i) => i.tempId === tempId);
+	while (current?.parentTempId) {
+		ids.add(current.parentTempId);
+		current = items.find((i) => i.tempId === current!.parentTempId);
+	}
+	return ids;
+}
+
 /**
  * Moves an item (and its subtree) to be the last child of `newParentTempId`
  * (or the last top-level item, if null) — the general-purpose move behind
@@ -178,6 +189,32 @@ export function reorderWithinParent(
 	}
 
 	return [...without.slice(0, insertAt), ...selfBlock, ...without.slice(insertAt)];
+}
+
+/**
+ * The reverse of `setParent`: pick, from an item's own row, which *other*
+ * items should become its children (sub-menu). Whatever's newly checked
+ * gets nested under `parentTempId`; whatever used to be nested here but got
+ * unchecked is promoted back to the top level, since there's no single
+ * "previous spot" to restore it to.
+ */
+export function setChildren(
+	items: EditableMenuItem[],
+	parentTempId: string,
+	selectedChildTempIds: string[]
+): EditableMenuItem[] {
+	let next = items;
+	for (const tempId of selectedChildTempIds) {
+		next = setParent(next, tempId, parentTempId);
+	}
+
+	const selected = new Set(selectedChildTempIds);
+	const droppedChildren = next.filter((i) => i.parentTempId === parentTempId && !selected.has(i.tempId));
+	for (const child of droppedChildren) {
+		next = setParent(next, child.tempId, null);
+	}
+
+	return next;
 }
 
 export function updateItem(

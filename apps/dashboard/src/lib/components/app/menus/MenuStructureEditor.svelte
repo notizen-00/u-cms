@@ -2,6 +2,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Select } from '$lib/components/ui/select';
+	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
@@ -14,6 +15,7 @@
 	import Link from '@lucide/svelte/icons/link';
 	import type { PageItem } from '$lib/types';
 	import {
+		ancestorIds,
 		depthOf,
 		descendantIds,
 		indentItem,
@@ -21,6 +23,7 @@
 		outdentItem,
 		removeItem,
 		reorderWithinParent,
+		setChildren,
 		setParent,
 		type EditableMenuItem
 	} from './menu-tree';
@@ -58,6 +61,8 @@
 				.filter((i) => i.parentTempId === item.parentTempId)
 				.findIndex((i) => i.tempId === item.tempId)}
 			{@const excluded = descendantIds(items, item.tempId)}
+			{@const ancestors = ancestorIds(items, item.tempId)}
+			{@const childCandidates = items.filter((i) => i.tempId !== item.tempId && !ancestors.has(i.tempId))}
 			<li style={`margin-left: ${depth * 28}px`}>
 				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
@@ -132,6 +137,32 @@
 								{/each}
 							</Select>
 						</div>
+
+						{#if childCandidates.length > 0}
+							<div class="space-y-1">
+								<Label class="text-xs text-muted-foreground">Jadikan sub-menu dari "{item.label || 'item ini'}"</Label>
+								<select
+									multiple
+									size={Math.min(4, Math.max(2, childCandidates.length))}
+									class="w-full rounded-md border border-input bg-background p-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+									onchange={(e) => {
+										const selected = Array.from((e.currentTarget as HTMLSelectElement).selectedOptions).map(
+											(o) => o.value
+										);
+										items = setChildren(items, item.tempId, selected);
+									}}
+								>
+									{#each childCandidates as option (option.tempId)}
+										<option value={option.tempId} selected={option.parentTempId === item.tempId}>
+											{'—'.repeat(depthOf(items, option.tempId))} {option.label || '(tanpa label)'}
+										</option>
+									{/each}
+								</select>
+								<p class="text-[11px] text-muted-foreground">
+									Tahan Ctrl (Windows) / Cmd (Mac) untuk pilih lebih dari satu.
+								</p>
+							</div>
+						{/if}
 					</div>
 
 					<div class="flex shrink-0 flex-col gap-0.5">

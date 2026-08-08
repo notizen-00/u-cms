@@ -49,7 +49,11 @@ header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
 .main-nav{display:flex;gap:1em;align-items:center;position:relative}
 .main-nav .nav-item{position:relative}
 .main-nav .sub-menu{display:none;position:absolute;top:100%;left:0;flex-direction:column;gap:.25em;background:#fff;border:1px solid #dfe5ed;border-radius:.375rem;padding:.5em;min-width:10em;z-index:10}
-.main-nav .nav-item:hover .sub-menu,.main-nav .nav-item:focus-within .sub-menu{display:flex}
+.main-nav .sub-menu .nav-item{width:100%}
+.main-nav .sub-menu .sub-menu{top:-.5em;left:100%}
+.main-nav .nav-item:hover>.sub-menu,.main-nav .nav-item:focus-within>.sub-menu{display:flex}
+.main-nav .has-children>a::after{content:" ▾";font-size:.7em}
+.main-nav .sub-menu .has-children>a::after{content:" ▸";font-size:.7em}
 </style>
 </head>
 <body>
@@ -58,18 +62,24 @@ header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
 <h1><a href="/"><%= it.site.name %></a></h1>
 <nav class="main-nav">
 <% if (it.menus.primary && it.menus.primary.length > 0) { %>
-<% it.menus.primary.forEach(function(item) { %>
-<span class="nav-item">
+<%
+/* Recursive so a sub-menu item can itself have a sub-menu (unlimited
+   depth) — see MenuStructureEditor's "Induk"/sub-menu picker in the
+   dashboard, which lets editors nest items arbitrarily deep. */
+function renderNavItem(item) {
+%>
+<span class="nav-item<% if (item.children.length > 0) { %> has-children<% } %>">
 <a href="<%= item.url %>"<% if (item.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= item.label %></a>
 <% if (item.children.length > 0) { %>
 <span class="sub-menu">
-<% item.children.forEach(function(child) { %>
-<a href="<%= child.url %>"<% if (child.newTab) { %> target="_blank" rel="noopener noreferrer"<% } %>><%= child.label %></a>
-<% }) %>
+<% item.children.forEach(renderNavItem) %>
 </span>
 <% } %>
 </span>
-<% }) %>
+<%
+}
+it.menus.primary.forEach(renderNavItem);
+%>
 <% } else { %>
 <a href="/">Beranda</a>
 <a href="/news/">Berita</a>
