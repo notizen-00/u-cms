@@ -9,7 +9,7 @@
 	import { Alert } from '$lib/components/ui/alert';
 	import FormFieldError from '$lib/components/app/FormFieldError.svelte';
 	import BlockEditor from '$lib/components/app/editor/BlockEditor.svelte';
-	import { slugify } from '$lib/utils';
+	import { slugify, sortPagesHierarchically } from '$lib/utils';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import type { ActionData, PageData } from './$types';
@@ -96,8 +96,8 @@
 						<Label for="parentId">Halaman Induk (opsional)</Label>
 						<Select id="parentId" name="parentId" value={form?.parentId ?? ''}>
 							<option value="">Tidak ada</option>
-							{#each data.pages as p (p.id)}
-								<option value={p.id}>{p.title}</option>
+							{#each sortPagesHierarchically(data.pages) as { page: p, depth } (p.id)}
+								<option value={p.id}>{depth > 0 ? `${'—'.repeat(depth)} ` : ''}{p.title}</option>
 							{/each}
 						</Select>
 					</div>

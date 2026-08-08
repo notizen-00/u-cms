@@ -13,7 +13,7 @@
 	import StatusBadge from '$lib/components/app/StatusBadge.svelte';
 	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import { allowedStatusTransitions, type ContentStatus } from '$lib/types';
-	import { formatDate } from '$lib/utils';
+	import { formatDate, sortPagesHierarchically } from '$lib/utils';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import UploadCloud from '@lucide/svelte/icons/upload-cloud';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -155,8 +155,8 @@
 						<Label for="parentId">Halaman Induk (opsional)</Label>
 						<Select id="parentId" name="parentId" value={form?.parentId ?? data.page.parentId ?? ''}>
 							<option value="">Tidak ada</option>
-							{#each data.otherPages as p (p.id)}
-								<option value={p.id}>{p.title}</option>
+							{#each sortPagesHierarchically(data.otherPages) as { page: p, depth } (p.id)}
+								<option value={p.id}>{depth > 0 ? `${'—'.repeat(depth)} ` : ''}{p.title}</option>
 							{/each}
 						</Select>
 						{#if data.page.parentId}
