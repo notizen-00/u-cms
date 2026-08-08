@@ -9,6 +9,7 @@ export const DEFAULT_STAT_STUDENTS = "15.000+";
 export const DEFAULT_STAT_PROGRAMS = "45";
 export const DEFAULT_STAT_FACULTY = "600+";
 export const DEFAULT_STAT_ALUMNI = "50.000+";
+export const DEFAULT_META_KEYWORDS = "universitas, pendidikan tinggi, perguruan tinggi, kampus";
 
 /**
  * Configurable per-site options (admin-editable via the Dashboard's theme
@@ -65,5 +66,11 @@ export const settings: PropertySchema = definePropertySchema({
     type: "string",
     label: "Jumlah Alumni",
     default: DEFAULT_STAT_ALUMNI,
+  },
+  metaKeywords: {
+    type: "string",
+    label: "Kata Kunci SEO",
+    description: "Dipisahkan koma. Ditambahkan ke <meta name=\"keywords\"> di setiap halaman.",
+    default: DEFAULT_META_KEYWORDS,
   },
 });

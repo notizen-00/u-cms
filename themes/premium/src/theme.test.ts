@@ -33,18 +33,23 @@ describe("layout rendering (Eta)", () => {
   const site = { name: "Situs Uji", slug: "test", logoUrl: null, faviconUrl: null };
   const theme = { primaryColor: "#4f46e5", heroTagline: "Tagline uji" };
 
+  const seo = { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null };
+
   it("renders the outer layout with title, site, theme, and body", () => {
     const html = eta.renderString(findLayout("layout"), {
       title: "Beranda",
       site,
       theme,
       menus: {},
+      seo,
       body: "<p>halo</p>",
     });
     expect(html).toContain("<title>Beranda | Situs Uji</title>");
     expect(html).toContain("--primary: #4f46e5;");
     expect(html).toContain("Tagline uji");
     expect(html).toContain("<p>halo</p>");
+    expect(html).toContain('<meta name="description" content="Deskripsi uji.">');
+    expect(html).toContain('<meta name="keywords" content="uji, tes">');
   });
 
   it("renders the home layout with hero tagline, news cards, and pages", () => {

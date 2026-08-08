@@ -1,5 +1,5 @@
 <script>
-	let { site, theme, menus, tokensCss, title, body } = $props();
+	let { site, theme, menus, tokensCss, title, body, seo } = $props();
 
 	const scrollRevealScript = __SCROLL_REVEAL_SCRIPT__;
 	const formSubmitScript = __FORM_SUBMIT_SCRIPT__;
@@ -164,6 +164,16 @@ main { display: block; }
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>{title} | {site.name}</title>
+	<meta name="description" content={seo.description} />
+	<meta name="keywords" content={seo.keywords} />
+	{#if seo.canonicalUrl}<link rel="canonical" href={seo.canonicalUrl} />{/if}
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={site.name} />
+	<meta property="og:title" content={`${title} | ${site.name}`} />
+	<meta property="og:description" content={seo.description} />
+	{#if seo.canonicalUrl}<meta property="og:url" content={seo.canonicalUrl} />{/if}
+	{#if seo.ogImage}<meta property="og:image" content={seo.ogImage} />{/if}
+	<meta name="twitter:card" content="summary_large_image" />
 	{#if site.faviconUrl}<link rel="icon" href={site.faviconUrl} />{/if}
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link

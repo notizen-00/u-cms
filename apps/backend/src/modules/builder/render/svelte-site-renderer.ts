@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTheme } from '../../themes/theme-registry';
 import { ContentRenderer } from './content-renderer';
+import { buildPageSeo, pickString, type PageSeo } from './seo';
 import type { SiteRenderData, SiteRenderer } from './site-renderer.types';
 import { resolveThemeVars } from './theme-vars';
 
@@ -49,6 +50,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
     );
     const themeVars = resolveThemeVars(theme, data.themeSettings);
     const tokensCss = renderTokensCss(theme.tokens);
+    const baseKeywords = typeof themeVars.metaKeywords === 'string' ? themeVars.metaKeywords : '';
     const formsById = new Map(data.forms.map((form) => [form.id, form]));
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
@@ -89,14 +91,19 @@ export class SvelteSiteRenderer implements SiteRenderer {
       relativePath: string,
       title: string,
       bodyHtml: string,
+      seo: PageSeo,
+      isHome = false,
     ): Promise<void> => {
       const dir = relativePath ? join(outputDir, relativePath) : outputDir;
       await mkdir(dir, { recursive: true });
       // Svelte's `render()` returns `<svelte:head>` content and everything
       // else separately — a real `<html>`/`<head>`/`<body>` document is
       // assembled here, not inside the Layout component (mirrors how
-      // SvelteKit's own root `app.html` + layout split works).
-      const { head, body } = await renderLayout('layout', { title, body: bodyHtml });
+      // SvelteKit's own root `app.html` + layout split works). `isHome` lets
+      // a theme's Layout component style itself differently on the homepage
+      // (e.g. a transparent header overlaid on a full-screen hero video) —
+      // every other page renders with the normal, opaque header.
+      const { head, body } = await renderLayout('layout', { title, body: bodyHtml, seo, isHome });
       const html = `<!DOCTYPE html>\n<html lang="id">\n<head>\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`;
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
     };
@@ -106,16 +113,44 @@ export class SvelteSiteRenderer implements SiteRenderer {
     const homeBody = homepage
       ? renderMarkdown(homepage.bodyMarkdown)
       : (await renderLayout('home', { news: data.news, pages: data.pages })).body;
-    await writePage('', 'Beranda', homeBody);
+    await writePage(
+      '',
+      'Beranda',
+      homeBody,
+      buildPageSeo(data.site, '/', {
+        explicitDescription: pickString(themeVars.heroTagline, themeVars.heroDescription),
+        fallbackMarkdown: homepage?.bodyMarkdown,
+        baseKeywords,
+      }),
+      true,
+    );
 
     const newsListBody = (await renderLayout('news-list', { news: data.news })).body;
-    await writePage('news', 'Berita', newsListBody);
+    await writePage(
+      'news',
+      'Berita',
+      newsListBody,
+      buildPageSeo(data.site, '/news/', { baseKeywords, extraKeywords: ['berita'] }),
+    );
 
     for (const item of data.news) {
       const { body } = await renderLayout('news-single', {
         item: { ...item, bodyHtml: renderMarkdown(item.bodyMarkdown) },
       });
-      await writePage(`news/${item.slug}`, item.title, body);
+      await writePage(
+        `news/${item.slug}`,
+        item.title,
+        body,
+        buildPageSeo(data.site, `/news/${item.slug}/`, {
+          explicitDescription: item.excerpt,
+          fallbackMarkdown: item.bodyMarkdown,
+          baseKeywords,
+          extraKeywords: [
+            ...item.categories.map((category) => category.name),
+            ...item.tags.map((tag) => tag.name),
+          ],
+        }),
+      );
     }
 
     for (const page of data.pages) {
@@ -123,7 +158,15 @@ export class SvelteSiteRenderer implements SiteRenderer {
       const { body } = await renderLayout('page', {
         item: { ...page, bodyHtml: renderMarkdown(page.bodyMarkdown) },
       });
-      await writePage(page.slug, page.title, body);
+      await writePage(
+        page.slug,
+        page.title,
+        body,
+        buildPageSeo(data.site, `/${page.slug}/`, {
+          fallbackMarkdown: page.bodyMarkdown,
+          baseKeywords,
+        }),
+      );
     }
   }
 

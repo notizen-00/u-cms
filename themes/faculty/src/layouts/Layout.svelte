@@ -1,5 +1,5 @@
 <script>
-	let { site, theme, menus, tokensCss, title, body } = $props();
+	let { site, theme, menus, tokensCss, title, body, isHome, seo } = $props();
 
 	const scrollRevealScript = __SCROLL_REVEAL_SCRIPT__;
 	const heroVideoScript = __HERO_VIDEO_SCRIPT__;
@@ -20,12 +20,12 @@ h1, h2, h3, h4 { font-family: var(--theme-typography-heading); letter-spacing: -
 
 /* Header */
 .site-header { position: relative; z-index: 40; background: var(--theme-background); border-bottom: 1px solid var(--theme-line); }
-.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; gap: 16px; border-bottom: 1px solid var(--theme-line); }
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; gap: 16px; border-bottom: 1px solid var(--theme-line); transition: border-color .2s ease; }
 .badge-strip { display: flex; align-items: center; gap: 10px; }
-.badge-strip img { width: 42px; height: 42px; border-radius: 999px; object-fit: cover; border: 1px solid var(--theme-line); background: var(--theme-surface); }
+.badge-strip img { width: 42px; height: 42px; border-radius: 999px; object-fit: cover; border: 1px solid var(--theme-line); background: var(--theme-surface); transition: border-color .2s ease; }
 .top-bar-actions { display: flex; align-items: center; gap: 14px; }
-.lang-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); font-size: 13px; font-weight: 700; }
-.search-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); }
+.lang-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); font-size: 13px; font-weight: 700; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.search-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); transition: background .2s ease, border-color .2s ease, color .2s ease; }
 .search-btn svg { width: 16px; height: 16px; }
 .nav-row { padding: 6px 0; }
 .main-nav { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
@@ -39,19 +39,33 @@ h1, h2, h3, h4 { font-family: var(--theme-typography-heading); letter-spacing: -
 .main-nav .nav-item:hover > .sub-menu, .main-nav .nav-item:focus-within > .sub-menu { display: flex; }
 .main-nav .has-children > a::after, .main-nav .has-children > .nav-item-label::after { content: "\\25BE"; font-size: .6em; opacity: .7; }
 
+/* Transparent header overlaid on the homepage's video hero — every other
+   page keeps the normal opaque header (no hero behind it to see through
+   to). Submenus stay solid/opaque in both cases since they can pop up over
+   arbitrary content either way. */
+.site-header.is-home { position: absolute; inset: 0 0 auto 0; background: transparent; }
+.site-header.is-home .top-bar, .site-header.is-home .nav-row { border-bottom-color: transparent; }
+.site-header.is-home .badge-strip img { border-color: rgba(255,255,255,.5); }
+.site-header.is-home .lang-pill, .site-header.is-home .search-btn { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); color: #fff; }
+.site-header.is-home .main-nav a, .site-header.is-home .main-nav .nav-item-label { color: rgba(255,255,255,.92); }
+.site-header.is-home .main-nav a:hover { color: #fff; background: rgba(255,255,255,.14); }
+.site-header.is-home .main-nav .sub-menu a, .site-header.is-home .main-nav .sub-menu .nav-item-label { color: var(--theme-foreground); }
+.site-header.is-home .main-nav .sub-menu a:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+
 /* Buttons */
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: var(--theme-radius-button); font-weight: 700; font-size: 14px; transition: transform .15s ease, box-shadow .15s ease; }
 .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 16px 34px -14px color-mix(in srgb, var(--primary) 65%, transparent); }
 .btn-primary:hover { transform: translateY(-2px); }
 
-/* Hero (video background) */
-.hero { position: relative; min-height: 640px; display: flex; align-items: flex-end; overflow: hidden; background: #0b1220; }
+/* Hero (video background) — fills the screen; the header floats over it
+   (see .site-header.is-home above) instead of pushing it down. */
+.hero { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; align-items: flex-end; overflow: hidden; background: #0b1220; }
 .hero-media { position: absolute; inset: 0; }
 .hero-media img, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .hero-video { opacity: 0; transition: opacity .6s ease; }
 .hero-video.is-ready { opacity: 1; }
-.hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,12,24,.35) 0%, rgba(6,12,24,.55) 55%, rgba(6,12,24,.88) 100%); }
-.hero-inner { position: relative; padding: 100px 0 80px; color: #fff; max-width: 820px; }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,12,24,.45) 0%, rgba(6,12,24,.4) 45%, rgba(6,12,24,.9) 100%); }
+.hero-inner { position: relative; padding: 160px 0 100px; color: #fff; max-width: 820px; }
 .hero-eyebrow { display: block; font-weight: 800; font-size: 18px; color: var(--secondary); margin-bottom: 14px; }
 .hero-title { font-size: clamp(30px, 4.6vw, 52px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; }
 .hero-desc { font-size: 17px; color: color-mix(in srgb, #fff 85%, transparent); max-width: 680px; margin-bottom: 32px; }
@@ -150,6 +164,16 @@ main { display: block; }
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>{title} | {site.name}</title>
+	<meta name="description" content={seo.description} />
+	<meta name="keywords" content={seo.keywords} />
+	{#if seo.canonicalUrl}<link rel="canonical" href={seo.canonicalUrl} />{/if}
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content={site.name} />
+	<meta property="og:title" content={`${title} | ${site.name}`} />
+	<meta property="og:description" content={seo.description} />
+	{#if seo.canonicalUrl}<meta property="og:url" content={seo.canonicalUrl} />{/if}
+	{#if seo.ogImage}<meta property="og:image" content={seo.ogImage} />{/if}
+	<meta name="twitter:card" content="summary_large_image" />
 	{#if site.faviconUrl}<link rel="icon" href={site.faviconUrl} />{/if}
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link
@@ -159,7 +183,7 @@ main { display: block; }
 	{@html `<style>${tokensCss}:root{--primary:${theme.primaryColor};--secondary:${theme.secondaryColor};}${styles}</style>`}
 </svelte:head>
 
-<header class="site-header">
+<header class="site-header" class:is-home={isHome}>
 	<div class="wrap top-bar">
 		<div class="badge-strip">
 			{#each logos as logo, index (index)}

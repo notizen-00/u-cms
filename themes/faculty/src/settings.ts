@@ -7,6 +7,7 @@ export const DEFAULT_HERO_HEADLINE = "Mencetak Lulusan Profesional, Berintegrita
 export const DEFAULT_HERO_DESCRIPTION =
   "Menghadirkan pendidikan berkualitas, didukung riset inovatif dan pengabdian masyarakat untuk menghasilkan lulusan unggul dan berdaya saing internasional.";
 export const DEFAULT_HERO_CTA_LABEL = "Jelajahi Program Kami";
+export const DEFAULT_META_KEYWORDS = "fakultas, program studi, pendidikan tinggi, kampus";
 
 /**
  * Configurable per-site options (admin-editable via the Dashboard's theme
@@ -82,5 +83,11 @@ export const settings: PropertySchema = definePropertySchema({
     type: "boolean",
     label: "Tampilkan Ikon Pencarian",
     default: true,
+  },
+  metaKeywords: {
+    type: "string",
+    label: "Kata Kunci SEO",
+    description: "Dipisahkan koma. Ditambahkan ke <meta name=\"keywords\"> di setiap halaman.",
+    default: DEFAULT_META_KEYWORDS,
   },
 });

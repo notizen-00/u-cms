@@ -4,6 +4,8 @@ export interface SiteRenderSite {
   slug: string;
   logoUrl: string | null;
   faviconUrl: string | null;
+  /** Custom domain, if configured — used to build an absolute canonical/OG URL. Null means no canonical tag is emitted (a relative one wouldn't be spec-valid). */
+  domain: string | null;
 }
 
 export interface SiteRenderTaxonomyItem {

@@ -20,6 +20,16 @@ export const layoutLayout = defineLayout<string>({
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><%= it.title %> | <%= it.site.name %></title>
+<meta name="description" content="<%= it.seo.description %>">
+<meta name="keywords" content="<%= it.seo.keywords %>">
+<% if (it.seo.canonicalUrl) { %><link rel="canonical" href="<%= it.seo.canonicalUrl %>"><% } %>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="<%= it.site.name %>">
+<meta property="og:title" content="<%= it.title %> | <%= it.site.name %>">
+<meta property="og:description" content="<%= it.seo.description %>">
+<% if (it.seo.canonicalUrl) { %><meta property="og:url" content="<%= it.seo.canonicalUrl %>"><% } %>
+<% if (it.seo.ogImage) { %><meta property="og:image" content="<%= it.seo.ogImage %>"><% } %>
+<meta name="twitter:card" content="summary_large_image">
 <% if (it.site.faviconUrl) { %><link rel="icon" href="<%= it.site.faviconUrl %>"><% } %>
 <style>
 <%~ it.tokensCss %>

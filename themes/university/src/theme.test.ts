@@ -98,9 +98,13 @@ describe("layout rendering (Svelte SSR)", () => {
       tokensCss: ":root{--theme-background:#fff;}",
       title: "Beranda",
       body: "<p>halo</p>",
+      seo: { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null },
     });
 
     expect(head).toContain("<title>Beranda | Situs Uji</title>");
+    expect(head).toContain('<meta name="description" content="Deskripsi uji."/>');
+    expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
+    expect(head).toContain('<link rel="canonical" href="https://example.test/"/>');
     expect(body).toContain("nav-item-label");
     expect(body).toContain("Profil");
     expect(body).toContain('href="/sejarah/"');

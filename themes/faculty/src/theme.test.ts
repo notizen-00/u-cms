@@ -89,9 +89,12 @@ describe("layout rendering (Svelte SSR)", () => {
       tokensCss: ":root{--theme-background:#fff;}",
       title: "Beranda",
       body: "<p>halo</p>",
+      seo: { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null },
     });
 
     expect(head).toContain("<title>Beranda | Situs Uji</title>");
+    expect(head).toContain('<meta name="description" content="Deskripsi uji."/>');
+    expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
     expect(body).toContain('src="/logo.png"');
     expect(body).toContain('alt="Logo Uji"');
     expect(body).toContain("lang-pill");

@@ -87,6 +87,7 @@ export class BuildProcessor extends WorkerHost {
           slug: site.slug,
           logoUrl: site.logoUrl,
           faviconUrl: site.faviconUrl,
+          domain: site.domain,
         },
         themeId: site.themeId,
         themeSettings:
