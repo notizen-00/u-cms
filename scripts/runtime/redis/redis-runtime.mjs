@@ -135,7 +135,8 @@ export function createRedisRuntime({ target, runtimeDir, dataDir, logFile, pidFi
 					'--dbfilename',
 					'dump.rdb',
 					'--save',
-					'60 1',
+					'60',
+					'1',
 					'--logfile',
 					logFile
 				],

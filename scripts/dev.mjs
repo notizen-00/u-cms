@@ -11,6 +11,8 @@ import { ROOT } from './runtime/paths.mjs';
 import { run } from './runtime/shell.mjs';
 import { bold, dim, heading, printError } from './runtime/ui.mjs';
 
+const debug = process.argv.slice(2).includes('--debug');
+
 async function main() {
 	heading('Checking infrastructure');
 	const result = await ensureAll({ mode: 'auto', yes: false });
@@ -21,6 +23,6 @@ async function main() {
 }
 
 main().catch((error) => {
-	printError(error);
+	printError(error, { debug });
 	process.exit(1);
 });

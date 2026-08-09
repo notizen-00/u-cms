@@ -71,7 +71,7 @@ function buildPostgresRuntime(target, resolution, known) {
 	});
 }
 
-function buildRedisRuntime(target, known) {
+function buildRedisRuntime(target, known, preferredPort) {
 	const paths = servicePaths('redis');
 	return createRedisRuntime({
 		target,
@@ -79,7 +79,7 @@ function buildRedisRuntime(target, known) {
 		dataDir: paths.dataDir,
 		logFile: paths.logFile,
 		pidFile: paths.pidFile,
-		knownPort: known?.port
+		knownPort: known?.port ?? preferredPort
 	});
 }
 
@@ -109,7 +109,7 @@ async function allRuntimes(env) {
 			targets.postgres ?? { user: 'unej_cms', password: '', database: 'unej_cms', port: 5432 },
 			config.services.postgres
 		),
-		redis: buildRedisRuntime(resolveRedisTarget(platformTarget), config.services.redis),
+		redis: buildRedisRuntime(resolveRedisTarget(platformTarget), config.services.redis, targets.redis?.port),
 		minio: buildMinioRuntime(
 			resolveMinioTarget(platformTarget),
 			targets.minio ?? { accessKey: 'unej_cms', secretKey: '', port: 9000 },
@@ -243,7 +243,7 @@ async function planRedis({ mode, target, platformTarget, known }) {
 	}
 
 	const resolved = resolveRedisTarget(platformTarget);
-	return { service: 'redis', action: 'install', target: resolved, known };
+	return { service: 'redis', action: 'install', target: resolved, known, preferredPort: probeTarget.port };
 }
 
 async function planMinio({ mode, wasCreated, target, platformTarget, known }) {
@@ -279,7 +279,7 @@ async function applyPlan(entry) {
 		entry.service === 'postgres'
 			? buildPostgresRuntime(entry.target, entry.credentials, entry.known)
 			: entry.service === 'redis'
-				? buildRedisRuntime(entry.target, entry.known)
+				? buildRedisRuntime(entry.target, entry.known, entry.preferredPort)
 				: buildMinioRuntime(entry.target, entry.credentials, entry.known);
 
 	// Most `install()` calls here are no-ops (already installed, prior run) —
