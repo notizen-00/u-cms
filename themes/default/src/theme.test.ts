@@ -44,7 +44,8 @@ describe("layout rendering (Eta)", () => {
       body: "<p>halo</p>",
     });
     expect(html).toContain("<title>Beranda | Situs Uji</title>");
-    expect(html).toContain("background:#075985");
+    expect(html).toContain("header h1 a{color:#075985");
+    expect(html).not.toContain("undefinedtable");
     expect(html).toContain("<p>halo</p>");
     expect(html).toContain('<meta name="description" content="Deskripsi uji.">');
     expect(html).toContain('<meta name="keywords" content="uji, tes">');

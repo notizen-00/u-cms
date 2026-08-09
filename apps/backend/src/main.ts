@@ -3,9 +3,11 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ADMIN_JSON_BODY_LIMIT } from './common/content-limits';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useBodyParser('json', { limit: ADMIN_JSON_BODY_LIMIT });
   app.use(helmet());
   app.use(cookieParser());
   // The dashboard talks to this API server-side (BFF pattern, see

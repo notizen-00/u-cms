@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PLUGIN_ID as FORM_BUILDER_PLUGIN_ID } from '@unej-cms/plugin-form-builder';
+import { PLUGIN_ID as PAGE_BUILDER_PLUGIN_ID } from '@unej-cms/plugin-page-builder';
 import type { DrizzleDb } from '../../database/database.types';
 import { forms, sitePlugins } from '../../database/schema';
 import type { BuildProducer } from '../builder/queue/build.producer';
@@ -128,6 +129,19 @@ describe('PluginsService', () => {
       'transaction:commit',
       'enqueue',
     ]);
+    expect(enqueue).toHaveBeenCalledWith('site-1', 'user-1');
+  });
+
+  it('preserves authored content when uninstalling page-builder', async () => {
+    const { db, deleteFrom } = createTransactionDb({ isActive: false });
+    const { service, enqueue } = createService(db);
+
+    await expect(
+      service.uninstall('site-1', PAGE_BUILDER_PLUGIN_ID, 'user-1'),
+    ).resolves.toEqual({ success: true });
+
+    expect(deleteFrom).toHaveBeenCalledTimes(1);
+    expect(deleteFrom).toHaveBeenCalledWith(sitePlugins);
     expect(enqueue).toHaveBeenCalledWith('site-1', 'user-1');
   });
 });

@@ -127,7 +127,7 @@
 
 			<Card>
 				<CardContent class="pt-6">
-					<BlockEditor name="bodyMarkdown" bind:value={bodyMarkdown} siteId={data.site.id} forms={data.forms} />
+					<BlockEditor name="bodyMarkdown" bind:value={bodyMarkdown} siteId={data.site.id} forms={data.forms} enabled={data.pageBuilderActive} formBuilderEnabled={data.formBuilderActive} />
 					<FormFieldError errors={form?.errors} field="bodyMarkdown" />
 				</CardContent>
 			</Card>

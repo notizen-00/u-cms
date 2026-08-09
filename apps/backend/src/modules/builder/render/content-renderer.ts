@@ -41,6 +41,76 @@ const ALLOWED_TAGS = [
   'caption',
   'figure',
   'figcaption',
+  // Semantic containers emitted by the Page Builder plugin. The plugin owns
+  // their presentation; this renderer only preserves its tightly-scoped
+  // markup after sanitization.
+  'section',
+  'article',
+  'aside',
+  'details',
+  'summary',
+  'dl',
+  'dt',
+  'dd',
+];
+
+/**
+ * Exact public class contract of `unej.page-builder`. Keep this list explicit:
+ * accepting a prefix wildcard such as `cms-pb-*` would let stored content opt
+ * into future plugin behaviour before that behaviour has been security-reviewed.
+ */
+const PAGE_BUILDER_ALLOWED_CLASSES = [
+  'cms-pb-hero',
+  'cms-pb-hero--no-media',
+  'cms-pb-hero__media',
+  'cms-pb-hero__content',
+  'cms-pb-hero__eyebrow',
+  'cms-pb-hero__title',
+  'cms-pb-hero__text',
+  'cms-pb-callout',
+  'cms-pb-callout__title',
+  'cms-pb-callout__text',
+  'cms-pb-card-grid',
+  'cms-pb-card-grid__title',
+  'cms-pb-card-grid__text',
+  'cms-pb-card',
+  'cms-pb-card__media',
+  'cms-pb-card__body',
+  'cms-pb-card__title',
+  'cms-pb-card__text',
+  'cms-pb-card__link',
+  'cms-pb-gallery',
+  'cms-pb-gallery__title',
+  'cms-pb-gallery__item',
+  'cms-pb-gallery__image',
+  'cms-pb-gallery__caption',
+  'cms-pb-stats',
+  'cms-pb-stats__title',
+  'cms-pb-stats__list',
+  'cms-pb-stat',
+  'cms-pb-stat__value',
+  'cms-pb-stat__label',
+  'cms-pb-faq',
+  'cms-pb-faq__title',
+  'cms-pb-faq__item',
+  'cms-pb-faq__question',
+  'cms-pb-faq__answer',
+  'cms-pb-spacer',
+  'cms-pb-tone-default',
+  'cms-pb-tone-primary',
+  'cms-pb-tone-dark',
+  'cms-pb-tone-soft',
+  'cms-pb-tone-info',
+  'cms-pb-tone-success',
+  'cms-pb-tone-warning',
+  'cms-pb-align-left',
+  'cms-pb-align-center',
+  'cms-pb-cols-2',
+  'cms-pb-cols-3',
+  'cms-pb-cols-4',
+  'cms-pb-space-sm',
+  'cms-pb-space-md',
+  'cms-pb-space-lg',
 ];
 
 /**
@@ -49,6 +119,9 @@ const ALLOWED_TAGS = [
  * bagi penulis konten untuk menempelkan class sembarangan ke tema.
  */
 const ALLOWED_CLASSES = {
+  // Page Builder may use its exact class contract on any semantic tag above.
+  // sanitize-html merges this wildcard-tag list with tag-specific entries.
+  '*': PAGE_BUILDER_ALLOWED_CLASSES,
   a: ['cms-button'],
   div: ['cms-columns', 'cms-column', 'cms-embed', 'cms-form'],
   table: ['cms-calendar'],

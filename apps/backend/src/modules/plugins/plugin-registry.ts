@@ -1,6 +1,7 @@
 import { discoverPlugins, type CmsPlugin } from '@unej-cms/sdk-plugin';
 import autoAvifPlugin from '@unej-cms/plugin-auto-avif';
 import formBuilderPlugin from '@unej-cms/plugin-form-builder';
+import pageBuilderPlugin from '@unej-cms/plugin-page-builder';
 
 export interface PluginDefinition {
   slug: string;
@@ -14,6 +15,7 @@ export interface PluginDefinition {
 // package under the monorepo's `plugins/` workspace and importing it here —
 // one line per plugin, never a runtime/user action.
 const SHIPPED_PLUGINS: readonly CmsPlugin[] = [
+  pageBuilderPlugin,
   formBuilderPlugin,
   autoAvifPlugin,
 ];

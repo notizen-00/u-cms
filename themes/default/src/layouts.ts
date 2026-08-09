@@ -31,9 +31,8 @@ export const layoutLayout = defineLayout<string>({
 <meta name="twitter:card" content="summary_large_image">
 <% if (it.site.faviconUrl) { %><link rel="icon" href="<%= it.site.faviconUrl %>"><% } %>
 <style>
-<%~ it.tokensCss %>
-/* Style untuk blok kaya dari block editor admin. Class-class ini di-whitelist di
-   ALLOWED_CLASSES pada eta-site-renderer.ts; menghapusnya membuat blok tampil polos. */
+<%~ it.tokensCss || '' %>
+/* Baseline styles for host-owned core blocks. Plugins may enhance these later. */
 .cms-button{display:inline-block;padding:.5em 1.1em;border-radius:.375rem;background:<%= it.theme.primaryColor %>;color:#fff;text-decoration:none;font-weight:500}
 .cms-columns{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 .cms-embed{position:relative;padding-bottom:56.25%;height:0}

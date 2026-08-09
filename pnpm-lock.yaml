@@ -44,6 +44,9 @@ importers:
       '@unej-cms/plugin-form-builder':
         specifier: workspace:*
         version: link:../../plugins/form-builder
+      '@unej-cms/plugin-page-builder':
+        specifier: workspace:*
+        version: link:../../plugins/page-builder
       '@unej-cms/sdk-media':
         specifier: workspace:*
         version: link:../../packages/sdk/media
@@ -446,6 +449,22 @@ importers:
       '@types/node':
         specifier: ^22.10.7
         version: 22.20.1
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.25)(tsx@4.23.9)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  plugins/page-builder:
+    dependencies:
+      '@unej-cms/sdk-plugin':
+        specifier: workspace:*
+        version: link:../../packages/sdk/plugin
+      '@unej-cms/sdk-ui':
+        specifier: workspace:*
+        version: link:../../packages/sdk/ui
+    devDependencies:
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.25)(tsx@4.23.9)(typescript@5.9.3)

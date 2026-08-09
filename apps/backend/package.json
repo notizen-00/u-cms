@@ -35,6 +35,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@unej-cms/plugin-auto-avif": "workspace:*",
     "@unej-cms/plugin-form-builder": "workspace:*",
+    "@unej-cms/plugin-page-builder": "workspace:*",
     "@unej-cms/sdk-media": "workspace:*",
     "@unej-cms/sdk-plugin": "workspace:*",
     "@unej-cms/sdk-theme": "workspace:*",

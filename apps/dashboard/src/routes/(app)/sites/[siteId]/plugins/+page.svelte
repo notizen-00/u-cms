@@ -29,6 +29,9 @@
 		if (plugin?.slug === 'unej.auto-avif') {
 			return 'Plugin akan dihapus dari site ini dan konversi AVIF otomatis dihentikan. File media yang sudah ada tetap tersimpan.';
 		}
+		if (plugin?.slug === 'unej.page-builder') {
+			return 'Plugin akan dihapus dari site ini dan editor visual Page Builder dinonaktifkan. Semua konten halaman dan berita tetap tersimpan sebagai Markdown/HTML dan dapat dipulihkan ke editor visual dengan menginstal ulang plugin.';
+		}
 
 		return 'Plugin akan dihapus dari site ini. Data atau konfigurasi milik plugin dapat dihapus permanen dan tidak dapat dipulihkan.';
 	}

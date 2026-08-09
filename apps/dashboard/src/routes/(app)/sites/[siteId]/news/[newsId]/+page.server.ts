@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { deleteNews, getNewsItem, publishNews, updateNews } from '$lib/server/api/news';
 import { getSite } from '$lib/server/api/sites';
 import { listForms } from '$lib/server/api/forms';
+import { listSitePlugins } from '$lib/server/api/plugins';
 import { ApiError } from '$lib/server/api/client';
 import type { ContentStatus } from '$lib/types';
 
@@ -10,14 +11,24 @@ export const load: PageServerLoad = async (event) => {
 	const { siteId, newsId } = event.params;
 
 	try {
-		const [site, news] = await Promise.all([getSite(event, siteId), getNewsItem(event, siteId, newsId)]);
+		const [site, news, plugins, forms] = await Promise.all([
+			getSite(event, siteId),
+			getNewsItem(event, siteId, newsId),
+			listSitePlugins(event, siteId),
+			listForms(event, siteId).catch((err) => {
+				if (err instanceof ApiError && err.status === 403) return [];
+				throw err;
+			})
+		]);
 		// 403 here just means the form-builder plugin isn't active for this
 		// site — the "Form" block simply has nothing to offer then.
-		const forms = await listForms(event, siteId).catch((err) => {
-			if (err instanceof ApiError && err.status === 403) return [];
-			throw err;
-		});
-		return { site, news, forms };
+		return {
+			site,
+			news,
+			forms,
+			pageBuilderActive: plugins.some((plugin) => plugin.slug === 'unej.page-builder' && plugin.isActive),
+			formBuilderActive: plugins.some((plugin) => plugin.slug === 'unej.form-builder' && plugin.isActive)
+		};
 	} catch (err) {
 		if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
 			error(err.status, err.status === 403 ? 'Anda tidak punya akses.' : 'Berita tidak ditemukan.');

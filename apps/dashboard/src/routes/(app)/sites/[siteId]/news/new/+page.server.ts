@@ -3,20 +3,29 @@ import type { Actions, PageServerLoad } from './$types';
 import { createNews } from '$lib/server/api/news';
 import { getSite } from '$lib/server/api/sites';
 import { listForms } from '$lib/server/api/forms';
+import { listSitePlugins } from '$lib/server/api/plugins';
 import { ApiError } from '$lib/server/api/client';
 
 export const load: PageServerLoad = async (event) => {
 	const { siteId } = event.params;
 	try {
-		const site = await getSite(event, siteId);
+		const [site, plugins, forms] = await Promise.all([
+			getSite(event, siteId),
+			listSitePlugins(event, siteId),
+			listForms(event, siteId).catch((err) => {
+				if (err instanceof ApiError && err.status === 403) return [];
+				throw err;
+			})
+		]);
 		// 403 here just means the form-builder plugin isn't active for this
 		// site — the "Form" block simply has nothing to offer then, not an
 		// error worth failing the whole page load over.
-		const forms = await listForms(event, siteId).catch((err) => {
-			if (err instanceof ApiError && err.status === 403) return [];
-			throw err;
-		});
-		return { site, forms };
+		return {
+			site,
+			forms,
+			pageBuilderActive: plugins.some((plugin) => plugin.slug === 'unej.page-builder' && plugin.isActive),
+			formBuilderActive: plugins.some((plugin) => plugin.slug === 'unej.form-builder' && plugin.isActive)
+		};
 	} catch (err) {
 		if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
 			error(err.status, err.status === 403 ? 'Anda tidak punya akses ke site ini.' : 'Site tidak ditemukan.');

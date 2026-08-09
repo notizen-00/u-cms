@@ -1,304 +1,106 @@
-# Penyimpanan Konten Block Editor — Kontrak Backend
+# Kontrak Penyimpanan Page Builder
 
-Status: **Opsi B sudah diterapkan** di backend (lihat §9) — ditulis setelah block editor (Gutenberg-style) diimplementasikan di admin app SvelteKit.
-Companion ke `PRD.md` (admin app) dan `docs/media_guide.md` (Media Library).
+Page Builder memakai kolom `body_markdown` yang sudah ada pada halaman dan
+berita. Tidak ada kolom JSON baru dan tidak ada migrasi database. Bentuk ini
+sengaja mirip `post_content` Gutenberg: metadata blok dan fallback publik
+disimpan bersama dalam satu string yang portabel.
 
-Dokumen ini menjawab satu pertanyaan: **konten dari block editor disimpan bagaimana di backend, dan apa yang perlu diubah supaya benar-benar tampil di situs publik.**
+## Lifecycle plugin
 
----
+- `unej.page-builder` aktif: dashboard menampilkan canvas visual, inserter,
+  pola halaman, outline, undo/redo, serta preview responsif.
+- Plugin nonaktif atau belum diinstal: editor blok inti dan mode Markdown tetap
+  tersedia, tetapi inserter menyembunyikan blok kaya serta pola Page Builder.
+- Blok Form hanya ditawarkan saat `unej.form-builder` aktif; kedua plugin tidak
+  saling bergantung.
+- Deactivate/uninstall tidak menghapus atau mengubah halaman dan berita.
+- Aset CSS publik hanya diinjeksi saat plugin aktif. Tanpa aset itu, fallback
+  HTML tetap semantik dan terbaca, tetapi tidak mendapat presentasi visual
+  Page Builder.
 
-# 1. Ringkasan Eksekutif
+## Format marker v2
 
-Block editor **tidak butuh perubahan schema untuk menyimpan** — semuanya tetap masuk ke kolom `body_markdown` yang sudah ada, sebagai string. Tidak ada migrasi DB yang diblokir.
+Blok yang tidak mempunyai padanan Markdown memakai marker versi 2:
 
-**Tapi ada masalah nyata di sisi render.** Renderer situs publik (`EtaSiteRenderer`) dikonfigurasi `MarkdownIt({ html: false })`, yang meng-**escape** semua HTML mentah. Akibatnya 5 dari 13 tipe blok tidak hanya gagal tampil — penanda internalnya **muncul sebagai teks mentah** di halaman publik.
-
-| | |
-| --- | --- |
-| Simpan ke DB | ✅ Jalan apa adanya, tanpa perubahan |
-| Round-trip di editor admin | ✅ Jalan (sanitasi hanya saat build, bukan saat simpan) |
-| Tampil di situs publik | ❌ Rusak untuk blok Tombol, Embed, Kalender, Kolom, HTML |
-
-Rekomendasi: **Opsi B di §6** — ubah konfigurasi renderer + perluas allowlist sanitizer. Perubahan terbatas di satu file backend, tidak perlu migrasi.
-
----
-
-# 2. Kondisi Backend Saat Ini (terverifikasi dari kode)
-
-Diverifikasi langsung di repo `unej-cms`, bukan dari PRD:
-
-### Kolom penyimpanan
-
-`src/database/schema/news.schema.ts:27` dan `pages.schema.ts` yang setara:
-
-```ts
-bodyMarkdown: text('body_markdown').notNull().default(''),
+```html
+<!-- cms:v2:callout %7B%22id%22%3A%22...%22%2C...%7D -->
+<aside class="cms-pb-callout">...</aside>
+<!-- /cms:v2:callout -->
 ```
 
-Kolom `text` biasa. **Tidak ada kolom block JSON.** Tidak ada batas panjang.
+Payload adalah JSON yang diproses dengan `encodeURIComponent`. Karena karakter
+`>` tidak dibiarkan mentah, nilai pengguna seperti `-->` tidak dapat menutup
+marker pembuka. Closing marker memberi parser batas yang stabil meski fallback
+HTML berisi baris kosong atau elemen bertingkat.
 
-### Kapan sanitasi terjadi
+Komentar dengan namespace `cms:` dicadangkan untuk host. Pada blok HTML Kustom,
+komentar reserved tersebut dinetralkan hanya pada fallback publik; nilai asli
+tetap utuh di payload sehingga round-trip editor tidak kehilangan data.
 
-Ini penting dan sering disalahpahami: **konten TIDAK disanitasi saat disimpan.** Pencarian `sanitize|markdown-it` di seluruh `src/` hanya menemukan satu pemakai: `src/modules/builder/render/eta-site-renderer.ts`.
-
-Artinya:
-
-- `POST`/`PATCH` news/pages menyimpan string **verbatim** ke DB.
-- Sanitasi hanya berjalan saat **build situs statis**.
-
-Konsekuensinya bagus untuk kita: penanda blok yang ditulis editor tetap utuh di DB, jadi tombol Edit di admin bisa mem-parse ulang blok dengan benar. Yang rusak murni output publiknya.
-
-### Pipeline render
-
-`eta-site-renderer.ts:56` dan `:92-102`:
-
-```ts
-this.md = new MarkdownIt({ html: false, linkify: true, breaks: true });
-
-private renderMarkdown(markdown: string): string {
-  const html = this.md.render(markdown ?? '');
-  return sanitizeHtml(html, {
-    allowedTags: ALLOWED_TAGS,
-    allowedAttributes: {
-      a: ['href', 'name', 'target', 'rel'],
-      img: ['src', 'alt'],
-    },
-    allowedSchemes: ['http', 'https', 'mailto'],
-  });
-}
-```
-
-`ALLOWED_TAGS` (`:13-43`) berisi: `p, br, strong, em, b, i, u, a, ul, ol, li, h1–h6, blockquote, code, pre, table, thead, tbody, tr, th, td, img, hr, span`.
-
-Dua gerbang yang harus dilewati konten:
-
-1. **`html: false`** — HTML mentah di markdown di-escape jadi teks terlihat, bukan di-render.
-2. **`sanitizeHtml`** — tag di luar `ALLOWED_TAGS` dibuang; **atribut `class` tidak diizinkan di tag manapun**; `div`, `iframe`, `caption`, `figure` tidak ada di allowlist.
-
----
-
-# 3. Format yang Dikirim Admin App
-
-Block editor menyerialkan blok ke markdown (`src/lib/editor/blocks.ts`). Dua strategi:
-
-**a. Blok yang punya padanan markdown** ditulis sebagai markdown biasa — portabel, tidak butuh dukungan khusus.
-
-**b. Blok tanpa padanan markdown** ditulis sebagai penanda komentar HTML berisi JSON blok, diikuti HTML sungguhan (pola yang sama dipakai Gutenberg di `post_content`):
+Parser tetap membaca marker v1 berikut agar konten lama kompatibel:
 
 ```html
 <!-- cms:button {"url":"/daftar","label":"Daftar"} -->
 <a class="cms-button" href="/daftar">Daftar</a>
 ```
 
-Penanda adalah yang dibaca ulang editor (round-trip lossless). HTML setelahnya yang seharusnya ditampilkan renderer.
+## Jenis blok
 
----
+Blok Markdown standar: heading, paragraf, gambar, kutipan, daftar, kode,
+pemisah, dan tabel.
 
-# 4. Matriks Kompatibilitas per Blok
+Blok ber-marker: tombol, embed, kalender, kolom, HTML Kustom, formulir, Hero,
+Callout, Cards, Gallery, Statistics, FAQ, dan Spacer.
 
-Diuji terhadap pipeline di §2.
+Blok Page Builder kaya memakai class bernamespace `cms-pb-*` dengan modifier
+finite untuk tone, alignment, jumlah kolom, dan spacing. Jangan menerima
+wildcard class baru pada renderer tanpa review keamanan.
 
-| Blok | Bentuk tersimpan | Situs publik | Catatan |
-| --- | --- | --- | --- |
-| Paragraf | markdown | ✅ | |
-| Heading | `## teks` | ✅ | |
-| Daftar | `- item` / `1. item` | ✅ | |
-| Kutipan | `> teks` | ✅ | |
-| Kode | ```` ``` ```` | ✅ | |
-| Pemisah | `---` | ✅ | |
-| Gambar | `![alt](url)` | ✅ | `img` + `src`/`alt` sudah diizinkan |
-| **Tabel** | tabel GFM | ✅ | `table/thead/tbody/tr/th/td` sudah di allowlist |
-| Tombol | penanda + `<a class>` | ❌ | penanda jadi teks; `class` dibuang |
-| Embed / Video | penanda + `<iframe>` | ❌ | `iframe` tidak di allowlist |
-| Kalender | penanda + `<table class>` | ❌ | penanda jadi teks; `caption` tidak di allowlist |
-| Kolom | penanda + `<div>` | ❌ | `div` tidak di allowlist |
-| HTML Kustom | penanda + markup | ❌ | seluruhnya di-escape |
+## Pipeline publik
 
-**8 dari 13 blok sudah aman hari ini** — termasuk Tabel, yang sengaja diserialkan ke tabel GFM justru supaya lolos tanpa perubahan backend.
-
-### Seperti apa kerusakannya
-
-Untuk blok Tombol, pengunjung situs publik akan melihat teks literal:
-
-```
-<!-- cms:button {"url":"/daftar","label":"Daftar"} --> <a class="cms-button" href="/daftar">Daftar</a>
+```text
+bodyMarkdown
+  -> MarkdownIt (raw HTML aktif)
+  -> sanitize-html (allowlist tag, atribut, class, scheme, iframe host)
+  -> ekspansi Form Builder
+  -> renderer theme
+  -> injeksi aset plugin aktif
+  -> situs statis
 ```
 
-Diperparah `linkify: true` (`:56`) yang mengubah URL di dalam JSON penanda jadi tautan, sehingga keluarannya makin berantakan.
+Sanitasi dilakukan saat build, bukan saat simpan. Ini penting agar metadata
+marker tetap utuh di database dan dapat dibaca kembali oleh editor.
 
----
+`ContentRenderer` hanya mempertahankan:
 
-# 5. Kenapa Rusak — Urutan Kejadiannya
+- tag semantik yang dibutuhkan blok;
+- class CMS dan Page Builder yang terdaftar secara eksplisit;
+- URL dengan scheme aman;
+- iframe YouTube/Vimeo;
+- atribut media dan form yang memang digunakan host.
 
-```
-bodyMarkdown (DB, utuh termasuk penanda)
-        │
-        ▼
-MarkdownIt({ html: false })        ← GERBANG 1: <div>, <iframe>, <!-- --> di-escape jadi teks
-        │
-        ▼
-sanitizeHtml({ allowedTags, … })   ← GERBANG 2: class dibuang, div/iframe/caption dibuang
-        │
-        ▼
-HTML situs statis
-```
+Script, event handler, inline style, iframe host asing, JavaScript URL, class
+asing, dan komentar metadata dibuang dari hasil publik.
 
-Gerbang 1 saja sudah cukup untuk merusak keluaran. Memperbaiki gerbang 2 saja tidak menolong — keduanya harus diperbaiki bersamaan.
+## Style
 
----
+CSS seluruh blok kaya `cms-pb-*` dimiliki package
+`@unej-cms/plugin-page-builder`, bukan theme. Builder menulis asset ber-hash ke
+`assets/plugins/unej.page-builder/` dan menginjeksi tag stylesheet secara
+otomatis. Theme tetap memberi baseline untuk blok inti host seperti tombol,
+kolom, embed, dan kalender agar editor inti serta plugin lain tidak bergantung
+pada aktivasi Page Builder. Theme boleh menyediakan token CSS seperti
+`--theme-primary`, tetapi semua token Page Builder mempunyai fallback.
 
-# 6. Opsi Perbaikan
+## Checklist regresi
 
-## Opsi A — Batasi editor ke blok markdown saja
-
-Hapus blok Tombol, Embed, Kalender, Kolom, HTML dari admin app.
-
-- Perubahan backend: **nol**
-- Waktu: ~30 menit di admin app
-- Konsekuensi: fitur yang Anda minta (widget kalender, dll.) hilang
-
-Layak dipakai sebagai penambal darurat kalau ada build produksi yang harus jalan besok, bukan sebagai tujuan akhir.
-
-## Opsi B — Aktifkan HTML terbatas di renderer ⭐ **direkomendasikan**
-
-Satu file backend, tanpa migrasi. Membuat 13 blok jalan semua.
-
-```ts
-// eta-site-renderer.ts
-
-const ALLOWED_TAGS = [
-  …tag yang sudah ada,
-  'div',            // blok Kolom
-  'iframe',         // blok Embed
-  'caption',        // judul tabel Kalender
-  'figure',
-  'figcaption',
-];
-
-// Penanda blok tetap perlu di-render sebagai HTML supaya tidak bocor jadi teks.
-// Aman karena sanitizeHtml di bawah tetap jadi gerbang sesungguhnya.
-this.md = new MarkdownIt({ html: true, linkify: true, breaks: true });
-
-private renderMarkdown(markdown: string): string {
-  const html = this.md.render(markdown ?? '');
-  return sanitizeHtml(html, {
-    allowedTags: ALLOWED_TAGS,
-    allowedAttributes: {
-      a: ['href', 'name', 'target', 'rel'],
-      img: ['src', 'alt', 'loading'],
-      iframe: ['src', 'loading', 'title', 'allowfullscreen'],
-    },
-    // Hanya class milik CMS yang lolos — bukan class sembarangan.
-    allowedClasses: {
-      a: ['cms-button'],
-      div: ['cms-columns', 'cms-column', 'cms-embed'],
-      table: ['cms-calendar'],
-    },
-    allowedSchemes: ['http', 'https', 'mailto'],
-    // Kunci embed ke penyedia yang dikenal — ini mitigasi utama pengaktifan iframe.
-    allowedIframeHostnames: ['www.youtube.com', 'player.vimeo.com'],
-  });
-}
-```
-
-Penanda `<!-- cms:… -->` tidak butuh opsi khusus: sanitize-html **membuang komentar HTML secara default**, dan itu memang perilaku yang diinginkan — penanda hanyalah metadata editor, bukan konten publik. (Tidak ada opsi `allowComments` di sanitize-html v2; jangan menambahkannya.)
-
-### Catatan keamanan
-
-`html: true` memang membuka permukaan XSS di lapisan markdown — tapi `sanitizeHtml` yang berjalan **setelahnya** adalah gerbang sesungguhnya, dan allowlist di atas justru lebih ketat daripada default sanitize-html. Ditambah:
-
-- `allowedClasses` membatasi ke class CMS saja, bukan `class` bebas.
-- `allowedIframeHostnames` mencegah iframe ke domain sembarangan.
-- Penulis konten adalah site member yang sudah terautentikasi (`SessionAuthGuard` + `SiteMemberGuard`), bukan publik anonim.
-
-Yang **tidak** boleh dilakukan: menaruh `'*': ['class']` di `allowedAttributes`, atau `allowedTags: false`.
-
-### Yang juga perlu: CSS tema
-
-Blok merender class yang butuh style di template Eta (`src/modules/builder/templates/default/`):
-
-```css
-.cms-button { display:inline-block; padding:.5em 1.1em; border-radius:.375rem;
-              background:#075985; color:#fff; text-decoration:none; font-weight:500; }
-.cms-columns { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
-.cms-embed { position:relative; padding-bottom:56.25%; height:0; }
-.cms-embed iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
-.cms-calendar td { text-align:center; }
-```
-
-Style yang sama sudah dipakai di pratinjau admin (`BlockEditor.svelte`), jadi bisa disalin agar pratinjau dan hasil publik konsisten.
-
-## Opsi C — Kolom `blocks` JSONB (jangka panjang)
-
-Menyimpan struktur blok sebagai data, bukan menuliskannya ke string lalu mem-parse ulang.
-
-```ts
-// migrasi
-blocks: jsonb('blocks'),                     // nullable — konten lama tetap null
-bodyMarkdown: text('body_markdown').notNull().default(''),  // dipertahankan
-```
-
-- `blocks` jadi sumber kebenaran saat ada isinya; `bodyMarkdown` tetap ditulis sebagai turunan supaya pencarian, ekspor, RSS, dan konten lama tidak rusak.
-- Renderer berjalan di atas array blok (tidak ada parsing markdown untuk blok kaya), jadi tidak perlu `html: true` sama sekali — lebih aman daripada Opsi B.
-- Butuh: migrasi Drizzle, update DTO Zod, block-walker di renderer, dan strategi untuk konten hasil impor WordPress (`wp_id`/`wp_guid` sudah ada di schema).
-
-Ini arah yang benar untuk Phase 2 (`PRD.md` §15 sudah mencantumkan block editor sebagai Phase 2), tapi **bukan prasyarat** — Opsi B sudah membuat semuanya jalan sekarang.
-
----
-
-# 7. Rekomendasi
-
-1. **Sekarang:** kerjakan Opsi B. Cakupannya satu file + satu blok CSS, tanpa migrasi, dan langsung menghidupkan seluruh 13 blok.
-2. **Phase 2:** pindah ke Opsi C saat block editor benar-benar di-scope, dengan `bodyMarkdown` tetap ditulis sebagai turunan agar kompatibel mundur.
-3. **Jangan** menyanitasi saat simpan. Perilaku sekarang (verbatim di DB, disanitasi saat render) yang membuat round-trip editor bekerja. Menyanitasi di `POST`/`PATCH` akan merusak penanda blok dan membuat konten tidak bisa diedit ulang.
-
----
-
-# 8. Checklist Verifikasi
-
-Setelah menerapkan Opsi B, publish satu artikel berisi ketiga belas blok lalu periksa:
-
-- [ ] Tidak ada teks `<!-- cms:` yang terlihat di halaman hasil build
-- [ ] Tombol tampil sebagai tombol, bukan tautan polos, dan `href`-nya benar
-- [ ] Embed YouTube tampil; embed ke domain acak **tidak** tampil (buktikan `allowedIframeHostnames` bekerja)
-- [ ] Kalender tampil sebagai tabel dengan judul bulan
-- [ ] Kolom tampil berdampingan di layar lebar
-- [ ] Blok HTML Kustom berisi `<script>alert(1)</script>` **tidak** tereksekusi
-- [ ] Buka ulang artikel di admin — semua blok terparse kembali ke tipe aslinya, bukan jadi Paragraf
-- [ ] Artikel lama (markdown murni, sebelum block editor) tetap tampil normal
-
-Poin terakhir dua itu yang paling sering terlewat: keduanya menguji jalur baca, bukan jalur tulis.
-
----
-
-# 9. Status Implementasi
-
-**Opsi B sudah diterapkan** di repo `unej-cms` (branch `master`, belum di-commit).
-
-| Berkas | Perubahan |
-| --- | --- |
-| `src/modules/builder/render/eta-site-renderer.ts` | `html: true`; tambah `div`/`iframe`/`caption`/`figure`/`figcaption` ke `ALLOWED_TAGS`; tambah konstanta `ALLOWED_CLASSES` & `ALLOWED_IFRAME_HOSTNAMES`; atribut `iframe` di-allowlist |
-| `src/modules/builder/templates/default/layout.eta` | Tambah blok `<style>` untuk `.cms-button`, `.cms-columns`, `.cms-embed`, `.cms-calendar`, plus style dasar tabel dan `img` responsif |
-| Schema / migrasi | **Tidak ada** |
-
-Tidak ada perubahan pada endpoint, DTO, guard, maupun bentuk response — admin app tidak perlu disesuaikan.
-
-### Hasil verifikasi
-
-Pipeline render (markdown-it + sanitize-html dengan konfigurasi baru) diuji langsung terhadap keluaran asli block editor, 11/11 lulus:
-
-| Uji | Hasil |
-| --- | --- |
-| Penanda `<!-- cms:… -->` tidak bocor sebagai teks | ✅ |
-| Tombol jadi `<a class="cms-button">` | ✅ |
-| Embed YouTube dipertahankan | ✅ |
-| Embed ke `evil.com` dibuang | ✅ |
-| Tabel GFM ter-render | ✅ |
-| Kalender + `<caption>` dipertahankan | ✅ |
-| Kolom dipertahankan | ✅ |
-| `<script>` dibuang | ✅ |
-| Atribut `onclick` dibuang | ✅ |
-| Class non-CMS (`jahat`) dibuang | ✅ |
-| Teks di dalam blok HTML tetap tampil | ✅ |
-
-Yang **belum** diuji karena butuh build situs sungguhan: dua poin terakhir di checklist §8 (buka ulang artikel di admin, dan artikel lama pra-block-editor). Keduanya menguji jalur baca, bukan jalur tulis.
+- Marker v2 round-trip untuk semua blok kaya, termasuk payload `-->` dan HTML
+  multiline.
+- Marker v1 tetap terbaca.
+- Pattern insertion selalu menghasilkan ID blok/item baru.
+- Modifier tak dikenal dinormalisasi dan class tak dikenal dibuang renderer.
+- Script, event attribute, JavaScript URL, dan iframe asing tidak lolos.
+- Aset Page Builder ada tepat sekali saat plugin aktif dan tidak ada saat
+  plugin nonaktif/uninstalled.
+- Halaman dan berita lama berbasis Markdown tetap dapat diedit dan dipublish.
+- Deactivate/uninstall tidak menghapus isi `body_markdown`.

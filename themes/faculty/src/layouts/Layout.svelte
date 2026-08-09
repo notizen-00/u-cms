@@ -109,7 +109,7 @@ main { display: block; }
 .prose table { width: 100%; border-collapse: collapse; margin: 1.6em 0; }
 .prose th, .prose td { border: 1px solid var(--theme-line); padding: 10px 12px; text-align: left; }
 
-/* Rich blocks from the admin block editor */
+/* Baseline styles for host-owned core blocks. Plugins may enhance these later. */
 .cms-button { display: inline-block; padding: .7em 1.4em; border-radius: var(--theme-radius-button); background: var(--primary); color: #fff !important; font-weight: 700; text-decoration: none !important; }
 .cms-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 1.6em 0; }
 .cms-column { background: var(--theme-surface); border: 1px solid var(--theme-line); border-radius: 10px; padding: 16px; }

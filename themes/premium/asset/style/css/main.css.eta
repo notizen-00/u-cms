@@ -263,7 +263,7 @@ main { padding: 56px 0 80px; }
 .prose img { border-radius: var(--radius); }
 .prose hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
 
-/* Rich blocks from the admin block editor (see eta-site-renderer.ts ALLOWED_CLASSES) */
+/* Baseline styles for host-owned core blocks. Plugins may enhance these later. */
 .cms-button {
   display: inline-block;
   padding: 0.6em 1.3em;

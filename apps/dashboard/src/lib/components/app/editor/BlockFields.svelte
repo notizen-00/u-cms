@@ -4,7 +4,18 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Select } from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { calendarTitle, type Block } from '$lib/editor/blocks';
+	import {
+		PAGE_BUILDER_ALIGNS,
+		PAGE_BUILDER_COLUMNS,
+		PAGE_BUILDER_SPACES,
+		PAGE_BUILDER_TONES,
+		calendarTitle,
+		createCardItem,
+		createFaqItem,
+		createGalleryItem,
+		createStatItem,
+		type Block
+	} from '$lib/editor/blocks';
 	import type { CmsForm } from '$lib/types';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -18,7 +29,7 @@
 		forms = []
 	}: {
 		block: Block;
-		onPickImage: (blockId: string) => void;
+		onPickImage: (blockId: string, target?: string) => void;
 		forms?: CmsForm[];
 	} = $props();
 
@@ -46,6 +57,37 @@
 		block.rows = block.rows.map((row) => row.filter((_, i) => i !== index));
 	}
 </script>
+
+{#snippet appearance(showColumns: boolean)}
+	<div class="grid gap-3 sm:grid-cols-2 {showColumns ? 'lg:grid-cols-3' : ''}">
+		<div class="space-y-1.5">
+			<Label>Tone</Label>
+			<Select bind:value={block.tone}>
+				{#each PAGE_BUILDER_TONES as tone (tone)}
+					<option value={tone}>{tone.charAt(0).toUpperCase() + tone.slice(1)}</option>
+				{/each}
+			</Select>
+		</div>
+		<div class="space-y-1.5">
+			<Label>Perataan</Label>
+			<Select bind:value={block.align}>
+				{#each PAGE_BUILDER_ALIGNS as align (align)}
+					<option value={align}>{align === 'left' ? 'Kiri' : 'Tengah'}</option>
+				{/each}
+			</Select>
+		</div>
+		{#if showColumns}
+			<div class="space-y-1.5">
+				<Label>Jumlah kolom</Label>
+				<Select bind:value={block.columnCount}>
+					{#each PAGE_BUILDER_COLUMNS as count (count)}
+						<option value={count}>{count} kolom</option>
+					{/each}
+				</Select>
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
 {#if block.type === 'heading'}
 	<div class="space-y-1.5">
@@ -254,6 +296,208 @@
 				Field dan tampilan formulir diambil otomatis dari pengaturan formulir saat situs di-build.
 			</p>
 		{/if}
+	</div>
+{:else if block.type === 'hero'}
+	<div class="space-y-4">
+		{@render appearance(false)}
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-1.5">
+				<Label for="field-hero-eyebrow">Eyebrow</Label>
+				<Input id="field-hero-eyebrow" bind:value={block.eyebrow} placeholder="Selamat datang" />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="field-hero-title">Judul</Label>
+				<Input id="field-hero-title" bind:value={block.text} placeholder="Judul utama yang kuat" />
+			</div>
+		</div>
+		<div class="space-y-1.5">
+			<Label for="field-hero-body">Deskripsi</Label>
+			<Textarea id="field-hero-body" bind:value={block.body} rows={4} placeholder="Jelaskan nilai utama secara singkat..." />
+		</div>
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-1.5">
+				<Label for="field-hero-label">Label tombol</Label>
+				<Input id="field-hero-label" bind:value={block.label} placeholder="Selengkapnya" />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="field-hero-url">Tautan tombol</Label>
+				<Input id="field-hero-url" bind:value={block.url} placeholder="/halaman atau https://..." />
+			</div>
+		</div>
+		<div class="rounded-lg border border-border p-3">
+			<div class="mb-3 flex flex-wrap items-center gap-3">
+				{#if block.imageUrl}
+					<img src={block.imageUrl} alt={block.imageAlt} class="h-24 w-36 rounded-md object-cover" />
+				{/if}
+				<Button type="button" variant="outline" size="sm" onclick={() => onPickImage(block.id, 'hero')}>
+					<ImagePlus class="size-3.5" /> {block.imageUrl ? 'Ganti gambar' : 'Pilih gambar hero'}
+				</Button>
+			</div>
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div class="space-y-1.5">
+					<Label for="field-hero-image">URL gambar</Label>
+					<Input id="field-hero-image" bind:value={block.imageUrl} placeholder="https://..." />
+				</div>
+				<div class="space-y-1.5">
+					<Label for="field-hero-alt">Teks alternatif</Label>
+					<Input id="field-hero-alt" bind:value={block.imageAlt} placeholder="Deskripsi gambar" />
+				</div>
+			</div>
+		</div>
+	</div>
+{:else if block.type === 'callout'}
+	<div class="space-y-4">
+		{@render appearance(false)}
+		<div class="space-y-1.5">
+			<Label for="field-callout-title">Judul</Label>
+			<Input id="field-callout-title" bind:value={block.text} placeholder="Ajakan utama" />
+		</div>
+		<div class="space-y-1.5">
+			<Label for="field-callout-body">Deskripsi</Label>
+			<Textarea id="field-callout-body" bind:value={block.body} rows={4} />
+		</div>
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-1.5">
+				<Label for="field-callout-label">Label tombol</Label>
+				<Input id="field-callout-label" bind:value={block.label} />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="field-callout-url">Tautan tombol</Label>
+				<Input id="field-callout-url" bind:value={block.url} placeholder="/kontak" />
+			</div>
+		</div>
+	</div>
+{:else if block.type === 'cards'}
+	<div class="space-y-4">
+		{@render appearance(true)}
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-1.5">
+				<Label for="field-cards-title">Judul bagian</Label>
+				<Input id="field-cards-title" bind:value={block.text} placeholder="Layanan unggulan" />
+			</div>
+			<div class="space-y-1.5">
+				<Label for="field-cards-body">Deskripsi bagian</Label>
+				<Input id="field-cards-body" bind:value={block.body} />
+			</div>
+		</div>
+		<div class="space-y-3">
+			{#each block.cards as card, index (card.id)}
+				<div class="rounded-lg border border-border p-4">
+					<div class="mb-3 flex items-center justify-between">
+						<p class="text-sm font-semibold">Kartu {index + 1}</p>
+						<button type="button" class="rounded p-1 text-destructive hover:bg-destructive/10 disabled:opacity-30" disabled={block.cards.length <= 1} onclick={() => (block.cards = block.cards.filter((item) => item.id !== card.id))} title="Hapus kartu">
+							<Trash2 class="size-4" />
+						</button>
+					</div>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<div class="space-y-1.5">
+							<Label for="field-card-title-{index}">Judul</Label>
+							<Input id="field-card-title-{index}" bind:value={block.cards[index].title} />
+						</div>
+						<div class="space-y-1.5">
+							<Label for="field-card-text-{index}">Deskripsi</Label>
+							<Input id="field-card-text-{index}" bind:value={block.cards[index].text} />
+						</div>
+						<div class="space-y-1.5">
+							<Label for="field-card-label-{index}">Label tautan</Label>
+							<Input id="field-card-label-{index}" bind:value={block.cards[index].label} />
+						</div>
+						<div class="space-y-1.5">
+							<Label for="field-card-url-{index}">Tautan</Label>
+							<Input id="field-card-url-{index}" bind:value={block.cards[index].url} />
+						</div>
+					</div>
+					<div class="mt-3 flex flex-wrap items-center gap-3">
+						{#if card.imageUrl}<img src={card.imageUrl} alt={card.imageAlt} class="h-16 w-24 rounded object-cover" />{/if}
+						<Button type="button" variant="outline" size="sm" onclick={() => onPickImage(block.id, `card:${card.id}`)}>
+							<ImagePlus class="size-3.5" /> {card.imageUrl ? 'Ganti gambar' : 'Pilih gambar'}
+						</Button>
+					</div>
+					<div class="mt-3 grid gap-2 sm:grid-cols-2">
+						<Input bind:value={block.cards[index].imageUrl} placeholder="URL gambar" />
+						<Input bind:value={block.cards[index].imageAlt} placeholder="Teks alternatif" />
+					</div>
+				</div>
+			{/each}
+			<Button type="button" variant="outline" size="sm" onclick={() => (block.cards = [...block.cards, createCardItem()])}>
+				<Plus class="size-3.5" /> Tambah kartu
+			</Button>
+		</div>
+	</div>
+{:else if block.type === 'gallery'}
+	<div class="space-y-4">
+		{@render appearance(true)}
+		<div class="space-y-1.5">
+			<Label for="field-gallery-title">Judul galeri</Label>
+			<Input id="field-gallery-title" bind:value={block.text} placeholder="Galeri kegiatan" />
+		</div>
+		<div class="grid gap-3 sm:grid-cols-2">
+			{#each block.gallery as item, index (item.id)}
+				<div class="rounded-lg border border-border p-3">
+					<div class="mb-2 flex items-start justify-between gap-2">
+						{#if item.url}<img src={item.url} alt={item.alt} class="h-28 min-w-0 flex-1 rounded object-cover" />{:else}<div class="grid h-28 min-w-0 flex-1 place-items-center rounded bg-muted text-xs text-muted-foreground">Belum ada gambar</div>{/if}
+						<button type="button" class="rounded p-1 text-destructive hover:bg-destructive/10 disabled:opacity-30" disabled={block.gallery.length <= 1} onclick={() => (block.gallery = block.gallery.filter((entry) => entry.id !== item.id))} title="Hapus gambar"><Trash2 class="size-4" /></button>
+					</div>
+					<Button type="button" variant="outline" size="sm" onclick={() => onPickImage(block.id, `gallery:${item.id}`)}><ImagePlus class="size-3.5" /> Pilih gambar</Button>
+					<div class="mt-3 space-y-2">
+						<Input bind:value={block.gallery[index].url} placeholder="URL gambar" />
+						<Input bind:value={block.gallery[index].alt} placeholder="Teks alternatif" />
+						<Input bind:value={block.gallery[index].caption} placeholder="Caption (opsional)" />
+					</div>
+				</div>
+			{/each}
+		</div>
+		<Button type="button" variant="outline" size="sm" onclick={() => (block.gallery = [...block.gallery, createGalleryItem()])}><Plus class="size-3.5" /> Tambah gambar</Button>
+	</div>
+{:else if block.type === 'stats'}
+	<div class="space-y-4">
+		{@render appearance(true)}
+		<div class="space-y-1.5">
+			<Label for="field-stats-title">Judul bagian</Label>
+			<Input id="field-stats-title" bind:value={block.text} placeholder="Capaian kami" />
+		</div>
+		<div class="grid gap-3 sm:grid-cols-2">
+			{#each block.stats as item, index (item.id)}
+				<div class="relative rounded-lg border border-border p-3 pr-10">
+					<button type="button" class="absolute right-2 top-2 rounded p-1 text-destructive hover:bg-destructive/10 disabled:opacity-30" disabled={block.stats.length <= 1} onclick={() => (block.stats = block.stats.filter((entry) => entry.id !== item.id))} title="Hapus statistik"><Trash2 class="size-4" /></button>
+					<div class="space-y-2">
+						<Input bind:value={block.stats[index].value} placeholder="100+" class="text-lg font-bold" />
+						<Input bind:value={block.stats[index].label} placeholder="Label statistik" />
+					</div>
+				</div>
+			{/each}
+		</div>
+		<Button type="button" variant="outline" size="sm" onclick={() => (block.stats = [...block.stats, createStatItem()])}><Plus class="size-3.5" /> Tambah statistik</Button>
+	</div>
+{:else if block.type === 'faq'}
+	<div class="space-y-4">
+		{@render appearance(false)}
+		<div class="space-y-1.5">
+			<Label for="field-faq-title">Judul bagian</Label>
+			<Input id="field-faq-title" bind:value={block.text} placeholder="Pertanyaan yang sering diajukan" />
+		</div>
+		<div class="space-y-3">
+			{#each block.faqs as item, index (item.id)}
+				<div class="relative rounded-lg border border-border p-4 pr-11">
+					<button type="button" class="absolute right-2 top-2 rounded p-1 text-destructive hover:bg-destructive/10 disabled:opacity-30" disabled={block.faqs.length <= 1} onclick={() => (block.faqs = block.faqs.filter((entry) => entry.id !== item.id))} title="Hapus pertanyaan"><Trash2 class="size-4" /></button>
+					<div class="space-y-2">
+						<Input bind:value={block.faqs[index].question} placeholder="Pertanyaan" />
+						<Textarea bind:value={block.faqs[index].answer} rows={3} placeholder="Jawaban" />
+					</div>
+				</div>
+			{/each}
+		</div>
+		<Button type="button" variant="outline" size="sm" onclick={() => (block.faqs = [...block.faqs, createFaqItem()])}><Plus class="size-3.5" /> Tambah pertanyaan</Button>
+	</div>
+{:else if block.type === 'spacer'}
+	<div class="space-y-2">
+		<Label for="field-spacer-size">Ukuran jarak</Label>
+		<Select id="field-spacer-size" bind:value={block.space}>
+			{#each PAGE_BUILDER_SPACES as space (space)}
+				<option value={space}>{space === 'sm' ? 'Kecil' : space === 'md' ? 'Sedang' : 'Besar'}</option>
+			{/each}
+		</Select>
+		<p class="text-xs text-muted-foreground">Gunakan jarak untuk memisahkan bagian halaman secara visual.</p>
 	</div>
 {:else if block.type === 'html'}
 	<div class="space-y-1.5">

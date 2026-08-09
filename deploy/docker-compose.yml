@@ -110,6 +110,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Adapter-node reads form actions before forwarding them to the API.
+      # Covers Page Builder content and the existing 10 MB media upload.
+      BODY_SIZE_LIMIT: 16M
       # SvelteKit adapter-node same-origin check for form actions; must match
       # the public URL the admin app is reached at (see nginx admin.conf below).
       ORIGIN: http://localhost:8081
