@@ -1,9 +1,22 @@
 <script>
 	let { item } = $props();
+
+	const breadcrumbs = [
+		{
+			label: 'Beranda',
+			href: '/'
+		},
+		{
+			label: item.title
+		}
+	];
 </script>
 
+__BREADCRUMB_SNIPPET__
+
 <div class="wrap">
-	<div class="article-header"><h1>{item.title}</h1></div>
+	{@render breadcrumb(breadcrumbs)}
+	
 	<div class="prose">
 		{@html item.bodyHtml}
 	</div>

@@ -16,10 +16,10 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "assets"],
   "sideEffects": false,
   "scripts": {
-    "generate": "node scripts/generate-svelte-sources.mjs",
+    "generate": "node scripts/generate-svelte-sources.mjs && node scripts/generate-theme-styles.mjs",
     "build": "npm run generate && tsup",
     "dev": "npm run generate && tsup --watch",
     "typecheck": "npm run generate && tsc --noEmit",

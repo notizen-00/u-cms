@@ -1,0 +1,18 @@
+.site-header { position: relative; z-index: 40; background: var(--theme-background); border-bottom: 1px solid var(--theme-line); }
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; gap: 16px; border-bottom: 1px solid var(--theme-line); transition: border-color .2s ease; }
+.badge-strip { display: flex; align-items: center; gap: 10px; }
+.badge-strip img { width: 42px; height: 42px; border-radius: 999px; object-fit: cover; border: 1px solid var(--theme-line); background: var(--theme-surface); transition: border-color .2s ease; }
+.top-bar-actions { display: flex; align-items: center; gap: 14px; }
+.lang-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); font-size: 13px; font-weight: 700; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.search-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--theme-surface); border: 1px solid var(--theme-line); transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.search-btn svg { width: 16px; height: 16px; }
+.nav-row { padding: 6px 0; }
+
+/* Transparent header overlaid on the homepage's video hero — every other
+   page keeps the normal opaque header (no hero behind it to see through
+   to). Submenus stay solid/opaque in both cases since they can pop up over
+   arbitrary content either way. */
+.site-header.is-home { position: absolute; inset: 0 0 auto 0; background: transparent; }
+.site-header.is-home .top-bar, .site-header.is-home .nav-row { border-bottom-color: transparent; }
+.site-header.is-home .badge-strip img { border-color: rgba(255,255,255,.5); }
+.site-header.is-home .lang-pill, .site-header.is-home .search-btn { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); color: #fff; }

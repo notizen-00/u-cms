@@ -1,13 +1,21 @@
 import { defineLayout } from "@unej-cms/sdk-theme";
 import { SCROLL_REVEAL_SCRIPT, HERO_VIDEO_SCRIPT } from "./animations.js";
+import { ThemeStylesSource } from "./theme-styles.generated.js";
 import {
   LayoutSource,
   HomeSource,
   NewsListSource,
   NewsSingleSource,
   PageSource,
+  BreadCrumbSource,
 } from "./svelte-sources.generated.js";
 
+function withBreadcrumb(source: string): string {
+	return source.replace(
+		'__BREADCRUMB_SNIPPET__',
+		() => BreadCrumbSource
+	);
+}
 /**
  * See themes/university/src/layouts.ts for the full rationale — `.svelte`
  * files are compiled at *site-build* time (apps/backend's
@@ -16,11 +24,17 @@ import {
  * these scripts itself. `JSON.stringify` turns each script into a properly
  * quoted/escaped JS string literal — the placeholders in Layout.svelte are
  * bare (unquoted) so the substituted value supplies its own quoting.
+ *
+ * `__THEME_STYLES__` follows the same trick, for the theme's CSS: authored
+ * as assets/css/*.css, concatenated by scripts/generate-theme-styles.mjs
+ * into `ThemeStylesSource`, spliced in here instead of living as one giant
+ * inline `<style>` string inside Layout.svelte.
  */
 function resolvePlaceholders(source: string): string {
   return source
     .replace("__SCROLL_REVEAL_SCRIPT__", () => JSON.stringify(SCROLL_REVEAL_SCRIPT))
-    .replace("__HERO_VIDEO_SCRIPT__", () => JSON.stringify(HERO_VIDEO_SCRIPT));
+    .replace("__HERO_VIDEO_SCRIPT__", () => JSON.stringify(HERO_VIDEO_SCRIPT))
+    .replace("__THEME_STYLES__", () => JSON.stringify(ThemeStylesSource));
 }
 
 export const layoutLayout = defineLayout<string>({
@@ -56,7 +70,7 @@ export const pageLayout = defineLayout<string>({
   id: "page",
   name: "Halaman Statis",
   description: "Body untuk Page biasa (bukan homepage).",
-  render: PageSource,
+  render: withBreadcrumb(PageSource),
 });
 
 export const layouts = [layoutLayout, homeLayout, newsListLayout, newsSingleLayout, pageLayout];

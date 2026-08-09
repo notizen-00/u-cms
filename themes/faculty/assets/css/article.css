@@ -1,0 +1,22 @@
+.article-header { max-width: var(--theme-layout-narrow); margin: 0 auto 32px; }
+.article-header h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--theme-muted); font-size: 13px; }
+.pill { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 600; padding: 4px 12px; border-radius: 999px; }
+.prose { max-width: var(--theme-layout-narrow); margin: 0 auto; font-size: 17px; }
+.prose h1, .prose h2, .prose h3 { font-weight: 800; margin: 1.6em 0 .6em; }
+.prose p { margin: 0 0 1.1em; }
+.prose ul, .prose ol { margin: 0 0 1.1em; padding-left: 1.4em; }
+.prose blockquote { margin: 1.6em 0; padding: 4px 20px; border-left: 3px solid var(--primary); color: var(--theme-muted); font-style: italic; }
+.prose img { border-radius: var(--theme-radius-card); }
+.prose table { width: 100%; border-collapse: collapse; margin: 1.6em 0; }
+.prose th, .prose td { border: 1px solid var(--theme-line); padding: 10px 12px; text-align: left; }
+
+/* Baseline styles for host-owned core blocks rendered inside markdown/prose
+   content (see apps/backend's ContentRenderer allowlist). Plugins may
+   enhance these later. */
+.cms-button { display: inline-block; padding: .7em 1.4em; border-radius: var(--theme-radius-button); background: var(--primary); color: #fff !important; font-weight: 700; text-decoration: none !important; }
+.cms-columns { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 1.6em 0; }
+.cms-column { background: var(--theme-surface); border: 1px solid var(--theme-line); border-radius: 10px; padding: 16px; }
+.cms-embed { position: relative; padding-bottom: 56.25%; height: 0; margin: 1.6em 0; border-radius: var(--theme-radius-card); overflow: hidden; }
+.cms-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.cms-calendar td { text-align: center; }

@@ -5,7 +5,7 @@ export const THEME_VERSION = "1.0.0";
 
 export const manifest: ThemeManifest = {
   id: THEME_ID,
-  name: "Faculty",
+  name: "Faculty Svelte",
   version: THEME_VERSION,
   author: { name: "UNEJ CMS Team" },
   description:

@@ -33,6 +33,7 @@
 </section>
 
 <div class="wrap">
+	
 	<section class="section reveal">
 		<div class="section-head">
 			<div>

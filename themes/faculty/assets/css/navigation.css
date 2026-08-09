@@ -1,0 +1,17 @@
+.main-nav { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+.main-nav .nav-item { position: relative; }
+.main-nav a, .main-nav .nav-item-label { display: inline-flex; align-items: center; gap: 4px; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--theme-foreground); transition: background .15s ease, color .15s ease; }
+.main-nav .nav-item-label { cursor: default; }
+.main-nav a:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.main-nav .sub-menu { display: none; position: absolute; top: 100%; left: 0; flex-direction: column; gap: 2px; background: var(--theme-background); border: 1px solid var(--theme-line); border-radius: 12px; padding: 8px; min-width: 220px; box-shadow: 0 20px 40px -24px rgba(11,21,38,.35); z-index: 50; }
+.main-nav .sub-menu .nav-item { width: 100%; }
+.main-nav .sub-menu .sub-menu { top: -8px; left: 100%; }
+.main-nav .nav-item:hover > .sub-menu, .main-nav .nav-item:focus-within > .sub-menu { display: flex; }
+.main-nav .has-children > a::after, .main-nav .has-children > .nav-item-label::after { content: "\25BE"; font-size: .6em; opacity: .7; }
+
+/* Same is-home overlay as header.css — kept here since these rules target
+   .main-nav specifically, not the header chrome around it. */
+.site-header.is-home .main-nav a, .site-header.is-home .main-nav .nav-item-label { color: rgba(255,255,255,.92); }
+.site-header.is-home .main-nav a:hover { color: #fff; background: rgba(255,255,255,.14); }
+.site-header.is-home .main-nav .sub-menu a, .site-header.is-home .main-nav .sub-menu .nav-item-label { color: var(--theme-foreground); }
+.site-header.is-home .main-nav .sub-menu a:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }

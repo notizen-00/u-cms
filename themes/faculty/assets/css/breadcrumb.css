@@ -1,0 +1,89 @@
+.faculty-breadcrumb {
+	margin-bottom: 1.25rem;
+}
+
+.faculty-breadcrumb-list {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+
+	margin: 0;
+	padding: 0;
+
+	list-style: none;
+
+	font-size: 0.875rem;
+}
+
+.faculty-breadcrumb-item {
+	display: inline-flex;
+	align-items: center;
+}
+
+.faculty-breadcrumb-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+
+	color: rgba(255, 255, 255, 0.72);
+
+	font-weight: 500;
+	text-decoration: none;
+
+	transition: color 0.2s ease;
+}
+
+.faculty-breadcrumb-link:hover {
+	color: #fff;
+}
+
+.faculty-breadcrumb-link svg {
+	display: block;
+
+	width: 14px !important;
+	height: 14px !important;
+
+	flex: 0 0 14px;
+}
+
+.faculty-breadcrumb-separator {
+	margin: 0 0.65rem;
+
+	color: rgba(255, 255, 255, 0.4);
+
+	font-size: 1.1rem;
+	line-height: 1;
+}
+
+.faculty-breadcrumb-current {
+	max-width: 600px;
+
+	color: rgba(255, 255, 255, 0.92);
+
+	font-weight: 500;
+
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+	.faculty-breadcrumb {
+		margin-bottom: 1rem;
+	}
+
+	.faculty-breadcrumb-list {
+		flex-wrap: nowrap;
+		overflow: hidden;
+
+		font-size: 0.8rem;
+	}
+
+	.faculty-breadcrumb-current {
+		max-width: 180px;
+
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}

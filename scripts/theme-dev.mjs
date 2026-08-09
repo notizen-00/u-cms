@@ -6,17 +6,19 @@
  * path as apps/backend's SvelteSiteRenderer / EtaSiteRenderer — see
  * apps/backend/src/modules/builder/render/) against small hand-written
  * sample content, with no database, queue, or auth in the loop. Saving a
- * file under themes/<slug>/src triggers a theme rebuild and pushes a
- * live-reload event to the browser over SSE.
+ * file under themes/<slug>/src or themes/<slug>/assets triggers a theme
+ * rebuild and pushes a live-reload event to the browser over SSE. Also
+ * serves /theme-assets/:themeId/* locally (mirroring apps/backend's
+ * ThemeAssetsController) so a theme's own asset URLs resolve during preview.
  *
  * Usage: pnpm theme:dev [slug] [--port=4310]
  *   slug defaults to "faculty". slug is the themes/<slug> directory name,
  *   not the theme's manifest id.
  */
-import { existsSync, watch } from 'node:fs';
+import { createReadStream, existsSync, statSync, watch } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { join } from 'node:path';
+import { extname, isAbsolute, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { ROOT } from './runtime/paths.mjs';
@@ -48,6 +50,25 @@ const LIVE_RELOAD_SNIPPET = `
 	}
 })();
 </script>`;
+
+// Same content-type set as scripts/static-preview.mjs, for assets/images/*
+// served under /theme-assets/:themeId/* — mirrors apps/backend's
+// ThemeAssetsController (modules/themes/theme-assets.controller.ts) so a
+// theme's `url('/theme-assets/<manifest-id>/images/...')` CSS references
+// resolve here too, not just in the real backend.
+const CONTENT_TYPES = {
+	'.avif': 'image/avif',
+	'.css': 'text/css; charset=utf-8',
+	'.gif': 'image/gif',
+	'.ico': 'image/x-icon',
+	'.jpeg': 'image/jpeg',
+	'.jpg': 'image/jpeg',
+	'.png': 'image/png',
+	'.svg': 'image/svg+xml',
+	'.webp': 'image/webp',
+	'.woff': 'font/woff',
+	'.woff2': 'font/woff2',
+};
 
 function parseArgs(argv) {
 	let slug = 'faculty';
@@ -246,6 +267,24 @@ async function main() {
 		return md.render(markdown ?? '');
 	}
 
+	// Same path-traversal guard as apps/backend's ThemeAssetsController — see
+	// its comment for why both a manual containment check *and* relying on
+	// the framework's own URL handling matter (encoded `..%2f` segments reach
+	// application code before any framework-level normalization applies).
+	const assetsDir = join(themeDir, 'assets');
+	function resolveThemeAsset(assetPath) {
+		if (!existsSync(assetsDir) || !assetPath) return null;
+		const candidate = join(assetsDir, assetPath);
+		const rel = relative(assetsDir, candidate);
+		if (rel === '' || rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
+		try {
+			if (!statSync(candidate).isFile()) return null;
+		} catch {
+			return null;
+		}
+		return candidate;
+	}
+
 	async function handleRequest(pathname) {
 		if (pathname === '/' || pathname === '') {
 			return renderPage({
@@ -301,6 +340,24 @@ async function main() {
 			res.write('\n');
 			sseClients.add(res);
 			req.on('close', () => sseClients.delete(res));
+			return;
+		}
+
+		const assetMatch = /^\/theme-assets\/([^/]+)\/(.+)$/.exec(url.pathname);
+		if (assetMatch) {
+			const [, themeId, assetPath] = assetMatch;
+			const theme = await loadTheme();
+			const file = theme.manifest.id === themeId ? resolveThemeAsset(assetPath) : null;
+			if (!file) {
+				res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+				res.end('Asset not found\n');
+				return;
+			}
+			res.writeHead(200, {
+				'content-type': CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
+				'cache-control': 'no-store',
+			});
+			createReadStream(file).pipe(res);
 			return;
 		}
 
@@ -364,19 +421,22 @@ async function main() {
 		}
 	}
 
-	const watcher = watch(join(themeDir, 'src'), { recursive: true }, () => scheduleRebuild());
+	const watchedDirs = [join(themeDir, 'src')];
+	if (existsSync(assetsDir)) watchedDirs.push(assetsDir);
+	const watchers = watchedDirs.map((dir) => watch(dir, { recursive: true }, () => scheduleRebuild()));
 
 	server.listen(port, () => {
 		heading('Preview ready');
 		console.log(`${cyan(bold(`http://localhost:${port}/`))}`);
 		console.log(dim('\nRoutes:'));
 		console.log(dim(routeList()));
-		console.log(dim(`\nWatching themes/${slug}/src for changes. Ctrl+C to stop.`));
+		const watchedLabel = watchedDirs.map((dir) => relative(ROOT, dir)).join(', ');
+		console.log(dim(`\nWatching ${watchedLabel} for changes. Ctrl+C to stop.`));
 	});
 
 	for (const signal of ['SIGINT', 'SIGTERM']) {
 		process.on(signal, () => {
-			watcher.close();
+			for (const watcher of watchers) watcher.close();
 			server.close(() => process.exit(0));
 		});
 	}
