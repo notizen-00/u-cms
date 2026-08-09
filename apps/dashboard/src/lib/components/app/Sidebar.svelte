@@ -146,6 +146,12 @@
 			)}
 
 			{@render navLink(
+				`/sites/${activeSite.id}/menus`,
+				'Menu',
+				Menu
+			)}
+
+			{@render navLink(
 				`/sites/${activeSite.id}/media`,
 				'Media',
 				Image
@@ -163,11 +169,6 @@
 				ClipboardList
 			)}
 
-			{@render navLink(
-				`/sites/${activeSite.id}/menus`,
-				'Menu',
-				Menu
-			)}
 
 			{@render navLink(
 				`/sites/${activeSite.id}/theme`,

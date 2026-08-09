@@ -29,7 +29,8 @@ async function main() {
 
 	if (watch) {
 		console.log(`\n${bold('Watch mode enabled')}`);
-		console.log(`${dim('Dashboard: http://localhost:5173 · API: http://localhost:3000')}\n`);
+		console.log(`${dim('Dashboard: http://localhost:5173 · API: http://localhost:3000')}`);
+		console.log(`${dim('Sites: http://{site-slug}.localhost:8080/')}\n`);
 		await run('pnpm', ['-r', '--parallel', 'run', 'dev'], { cwd: ROOT });
 		return;
 	}

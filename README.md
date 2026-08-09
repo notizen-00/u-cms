@@ -59,6 +59,7 @@ pnpm start      # mode produksi: tiga proses yang sama, dari hasil build
 ```
 
 Dashboard ada di http://localhost:5173. Gunakan `pnpm dev:watch` saat mengembangkan UI agar perubahan dimuat otomatis oleh Vite.
+Hasil publish builder tersedia secara native di `http://{site-slug}.localhost:8080/` selama `pnpm dev:watch` berjalan.
 
 Flag yang tersedia kalau Anda perlu kendali lebih:
 
