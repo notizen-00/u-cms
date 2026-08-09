@@ -202,6 +202,7 @@ export const MEDIA_ALLOWED_MIME_TYPES = [
 	'image/png',
 	'image/gif',
 	'image/webp',
+	'image/avif',
 	'image/svg+xml',
 	'application/pdf'
 ] as const;
@@ -220,6 +221,7 @@ export interface SitePlugin {
 	name: string;
 	description: string;
 	version: string;
+	isInstalled: boolean;
 	isActive: boolean;
 	activatedAt: string | null;
 	deactivatedAt: string | null;

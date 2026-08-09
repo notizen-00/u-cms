@@ -1,5 +1,4 @@
 import { defineLayout } from "@unej-cms/sdk-theme";
-import { FORM_SUBMIT_SCRIPT } from "./form-script.js";
 
 /**
  * `render` is the raw Eta template source (ported from the previous
@@ -46,17 +45,6 @@ caption{caption-side:top;text-align:left;font-weight:600;padding-bottom:.4em}
 .cms-calendar td{text-align:center}
 img{max-width:100%;height:auto}
 header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
-.cms-form-embed{margin:1.5em 0;padding:1.25em;border:1px solid #dfe5ed;border-radius:.5rem;max-width:32rem}
-.cms-form-title{margin:0 0 1em;font-size:1.1em}
-.cms-form-field{margin-bottom:1em;display:flex;flex-direction:column;gap:.35em}
-.cms-form-field label{font-weight:600;font-size:.9em}
-.cms-form-field input,.cms-form-field textarea,.cms-form-field select{padding:.5em .6em;border:1px solid #dfe5ed;border-radius:.375rem;font:inherit}
-.cms-form-field-checkbox label{flex-direction:row;align-items:center;display:flex;gap:.5em;font-weight:400}
-.cms-form-submit{align-self:flex-start;padding:.6em 1.3em;border:0;border-radius:.375rem;background:<%= it.theme.primaryColor %>;color:#fff;font-weight:600;cursor:pointer}
-.cms-form-submit:disabled{opacity:.6;cursor:default}
-.cms-form-status{margin-top:.75em;font-size:.9em}
-.cms-form-status-success{color:#15803d}
-.cms-form-status-error{color:#b91c1c}
 .main-nav{display:flex;gap:1em;align-items:center;position:relative}
 .main-nav .nav-item{position:relative}
 .main-nav .sub-menu{display:none;position:absolute;top:100%;left:0;flex-direction:column;gap:.25em;background:#fff;border:1px solid #dfe5ed;border-radius:.375rem;padding:.5em;min-width:10em;z-index:10}
@@ -108,7 +96,6 @@ it.menus.primary.forEach(renderNavItem);
 <footer>
 <p>&copy; <%= new Date().getFullYear() %> <%= it.site.name %></p>
 </footer>
-<script>${FORM_SUBMIT_SCRIPT}</script>
 </body>
 </html>
 `,

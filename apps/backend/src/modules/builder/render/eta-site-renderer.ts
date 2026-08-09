@@ -5,6 +5,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolveTheme } from '../../themes/theme-registry';
 import { ContentRenderer } from './content-renderer';
+import {
+  emitPluginAssets,
+  injectPluginAssetTags,
+  renderPluginAssetTags,
+} from './plugin-assets';
 import { buildPageSeo, pickString, type PageSeo } from './seo';
 import type { SiteRenderData, SiteRenderer } from './site-renderer.types';
 import { resolveThemeVars } from './theme-vars';
@@ -32,6 +37,7 @@ export class EtaSiteRenderer implements SiteRenderer {
     const tokensCss = renderTokensCss(theme.tokens);
     const baseKeywords = typeof themeVars.metaKeywords === 'string' ? themeVars.metaKeywords : '';
     const formsById = new Map(data.forms.map((form) => [form.id, form]));
+    const emittedPluginAssets = await emitPluginAssets(outputDir, data.pluginAssets);
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
 
@@ -61,7 +67,11 @@ export class EtaSiteRenderer implements SiteRenderer {
     ): Promise<void> => {
       const dir = relativePath ? join(outputDir, relativePath) : outputDir;
       await mkdir(dir, { recursive: true });
-      const html = renderLayout('layout', { title, body, seo });
+      const renderedHtml = renderLayout('layout', { title, body, seo });
+      const html = injectPluginAssetTags(
+        renderedHtml,
+        renderPluginAssetTags(emittedPluginAssets, relativePath),
+      );
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
     };
 

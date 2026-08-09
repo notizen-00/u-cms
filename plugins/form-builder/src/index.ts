@@ -1,4 +1,5 @@
 export * from "./manifest.js";
+export * from "./assets.js";
 export * from "./fields.js";
 export * from "./permissions.js";
 export * from "./guards.js";

@@ -1,5 +1,6 @@
 import { definePlugin, type PluginRuntimeContext } from "@unej-cms/sdk-plugin";
 import { submitFormAction } from "./actions.js";
+import { formBuilderScriptAsset, formBuilderStyleAsset } from "./assets.js";
 import { formBlock } from "./block.js";
 import { manifest } from "./manifest.js";
 import {
@@ -16,6 +17,7 @@ export const formBuilderPlugin = definePlugin<PluginRuntimeContext>({
     blocks: [formBlock],
     actions: [submitFormAction],
     triggers: [onSubmitSuccessTrigger, onSubmitErrorTrigger],
+    assets: [formBuilderStyleAsset, formBuilderScriptAsset],
   },
   auth: {
     permissions: [manageFormsPermission, viewSubmissionsPermission, exportSubmissionsPermission],
@@ -29,7 +31,7 @@ export const formBuilderPlugin = definePlugin<PluginRuntimeContext>({
       context.logger.info("form-builder deactivated", { pluginId: context.manifest.id });
     },
     async onUninstall(context) {
-      context.logger.warn("form-builder uninstalled - stored forms/submissions are not deleted automatically", {
+      context.logger.info("form-builder uninstalled; site-owned data cleanup is handled by the CMS host", {
         pluginId: context.manifest.id,
       });
     },

@@ -6,3 +6,18 @@ packages:
 
 onlyBuiltDependencies:
   - esbuild
+  - sharp
+
+# Keep native Sharp packages for both the Windows development host and the
+# Node Alpine (linux-musl) production image when the lockfile is generated.
+supportedArchitectures:
+  os:
+    - current
+    - win32
+    - linux
+  cpu:
+    - current
+    - x64
+  libc:
+    - current
+    - musl

@@ -19,7 +19,10 @@ describe("facultyTheme", () => {
     expect(facultyTheme.settings?.heroVideoUrl?.type).toBe("media");
     expect(facultyTheme.settings?.heroVideoPoster?.type).toBe("media");
     expect(facultyTheme.settings?.accreditationLogos?.type).toBe("array");
-    expect(facultyTheme.settings?.heroHeadline?.default).toContain("Mencetak Lulusan");
+    const heroHeadline = facultyTheme.settings?.heroHeadline;
+    expect(heroHeadline && "default" in heroHeadline ? heroHeadline.default : undefined).toContain(
+      "Mencetak Lulusan",
+    );
   });
 
   it("declares fixed design tokens", () => {
@@ -36,8 +39,8 @@ describe("facultyTheme", () => {
     const layout = facultyTheme.layouts.find((candidate) => candidate.id === "layout");
     expect(layout?.render).not.toContain("__SCROLL_REVEAL_SCRIPT__");
     expect(layout?.render).not.toContain("__HERO_VIDEO_SCRIPT__");
-    expect(layout?.render).not.toContain("__FORM_SUBMIT_SCRIPT__");
     expect(layout?.render).toContain("IntersectionObserver");
+    expect(layout?.render).not.toContain("cms-form-embed");
   });
 });
 
@@ -63,7 +66,11 @@ describe("layout rendering (Svelte SSR)", () => {
     await writeFile(file, js.code, "utf-8");
     const mod = (await import(pathToFileURL(file).href)) as { default: unknown };
 
-    return render(mod.default as never, { props }) as unknown as { head: string; body: string };
+    const renderComponent = render as unknown as (
+      component: unknown,
+      options: { props: Record<string, unknown> },
+    ) => { head: string; body: string };
+    return renderComponent(mod.default, { props });
   }
 
   const site = { name: "Situs Uji", slug: "test", logoUrl: null, faviconUrl: null };

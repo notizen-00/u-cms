@@ -1,5 +1,4 @@
 import { defineLayout } from "@unej-cms/sdk-theme";
-import { FORM_SUBMIT_SCRIPT } from "./form-script.js";
 
 /**
  * `render` is the raw Eta template source. `TRender = string` — the Builder
@@ -345,47 +344,6 @@ main { padding: 56px 0 80px; }
   color: #64748b;
 }
 
-/* Form-builder embed (see apps/backend .../eta-site-renderer.ts renderFormEmbed) */
-.cms-form-embed {
-  margin: 2em 0;
-  padding: 28px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  max-width: 560px;
-}
-.cms-form-title { margin: 0 0 20px; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
-.cms-form-field { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
-.cms-form-field label { font-weight: 600; font-size: 14px; }
-.cms-form-field input, .cms-form-field textarea, .cms-form-field select {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font: inherit;
-  background: var(--bg);
-  color: var(--ink);
-}
-.cms-form-field input:focus, .cms-form-field textarea:focus, .cms-form-field select:focus {
-  outline: 2px solid color-mix(in srgb, var(--primary) 40%, transparent);
-  outline-offset: 1px;
-  border-color: var(--primary);
-}
-.cms-form-field-checkbox label { flex-direction: row; align-items: center; display: flex; gap: 8px; font-weight: 500; }
-.cms-form-submit {
-  padding: 12px 24px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--primary);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-.cms-form-submit:hover { transform: translateY(-1px); }
-.cms-form-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
-.cms-form-status { margin-top: 14px; font-size: 14px; font-weight: 600; }
-.cms-form-status-success { color: #16a34a; }
-.cms-form-status-error { color: #dc2626; }
 `;
 
 export const layoutLayout = defineLayout<string>({
@@ -496,7 +454,6 @@ export const layoutLayout = defineLayout<string>({
     <div class="footer-bottom">&copy; <%= new Date().getFullYear() %> <%= it.site.name %>. Seluruh hak cipta dilindungi.</div>
   </div>
 </footer>
-<script>${FORM_SUBMIT_SCRIPT}</script>
 </body>
 </html>
 `,

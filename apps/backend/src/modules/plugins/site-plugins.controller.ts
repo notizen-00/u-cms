@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -34,5 +41,15 @@ export class SitePluginsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.pluginsService.deactivate(siteId, slug, user.id);
+  }
+
+  @Delete(':slug')
+  @UseGuards(SiteAdminGuard)
+  uninstall(
+    @Param('siteId') siteId: string,
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.pluginsService.uninstall(siteId, slug, user.id);
   }
 }

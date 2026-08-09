@@ -1,8 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
+import { PLUGIN_ID as FORM_BUILDER_PLUGIN_ID } from '@unej-cms/plugin-form-builder';
 import { DRIZZLE } from '../../database/database.module';
 import type { DrizzleDb } from '../../database/database.types';
-import { sitePlugins } from '../../database/schema';
+import { forms, sitePlugins } from '../../database/schema';
 import { BuildProducer } from '../builder/queue/build.producer';
 import { findPluginDefinition, PLUGIN_REGISTRY } from './plugin-registry';
 
@@ -29,6 +35,7 @@ export class PluginsService {
       const row = bySlug.get(definition.slug);
       return {
         ...definition,
+        isInstalled: Boolean(row),
         isActive: row?.isActive ?? false,
         activatedAt: row?.activatedAt ?? null,
         deactivatedAt: row?.deactivatedAt ?? null,
@@ -63,26 +70,72 @@ export class PluginsService {
   async deactivate(siteId: string, slug: string, triggeredByUserId: string) {
     this.assertPluginExists(slug);
 
-    await this.db
-      .insert(sitePlugins)
-      .values({
-        siteId,
-        pluginSlug: slug,
+    const [updated] = await this.db
+      .update(sitePlugins)
+      .set({
         isActive: false,
         deactivatedAt: new Date(),
+        updatedAt: new Date(),
       })
-      .onConflictDoUpdate({
-        target: [sitePlugins.siteId, sitePlugins.pluginSlug],
-        set: {
-          isActive: false,
-          deactivatedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+      .where(
+        and(eq(sitePlugins.siteId, siteId), eq(sitePlugins.pluginSlug, slug)),
+      )
+      .returning({ id: sitePlugins.id });
+
+    if (!updated) {
+      throw new NotFoundException(
+        `Plugin "${slug}" is not installed for this site`,
+      );
+    }
 
     await this.buildProducer.enqueue(siteId, triggeredByUserId);
 
     return this.findOneForSite(siteId, slug);
+  }
+
+  async uninstall(siteId: string, slug: string, triggeredByUserId: string) {
+    this.assertPluginExists(slug);
+
+    await this.db.transaction(async (tx) => {
+      const [installation] = await tx
+        .select({ isActive: sitePlugins.isActive })
+        .from(sitePlugins)
+        .where(
+          and(eq(sitePlugins.siteId, siteId), eq(sitePlugins.pluginSlug, slug)),
+        )
+        .limit(1)
+        .for('update');
+
+      if (!installation) {
+        throw new NotFoundException(
+          `Plugin "${slug}" is not installed for this site`,
+        );
+      }
+      if (installation.isActive) {
+        throw new ConflictException(
+          `Plugin "${slug}" must be deactivated before uninstalling`,
+        );
+      }
+
+      // Plugin packages remain in the official server catalog; uninstalling
+      // removes only this site's installation and plugin-owned data.
+      // form_submissions follow through their ON DELETE CASCADE FK to forms.
+      if (slug === FORM_BUILDER_PLUGIN_ID) {
+        await tx.delete(forms).where(eq(forms.siteId, siteId));
+      }
+
+      await tx
+        .delete(sitePlugins)
+        .where(
+          and(eq(sitePlugins.siteId, siteId), eq(sitePlugins.pluginSlug, slug)),
+        );
+    });
+
+    // Queue only after the cleanup transaction commits, so a new build cannot
+    // observe a half-uninstalled plugin.
+    await this.buildProducer.enqueue(siteId, triggeredByUserId);
+
+    return { success: true };
   }
 
   private async findOneForSite(siteId: string, slug: string) {
@@ -101,6 +154,7 @@ export class PluginsService {
 
     return {
       ...definition,
+      isInstalled: Boolean(row),
       isActive: row?.isActive ?? false,
       activatedAt: row?.activatedAt ?? null,
       deactivatedAt: row?.deactivatedAt ?? null,

@@ -1,3 +1,5 @@
+import type { AssetDefinition } from '@unej-cms/sdk-ui';
+
 export interface SiteRenderSite {
   id: string;
   name: string;
@@ -58,6 +60,12 @@ export interface SiteRenderMenuItem {
   children: SiteRenderMenuItem[];
 }
 
+/** A packaged/external UI asset contributed by one active site plugin. */
+export interface SiteRenderPluginAsset {
+  readonly pluginId: string;
+  readonly asset: AssetDefinition;
+}
+
 export interface SiteRenderData {
   site: SiteRenderSite;
   themeId: string;
@@ -70,6 +78,7 @@ export interface SiteRenderData {
   news: SiteRenderNewsItem[];
   pages: SiteRenderPageItem[];
   forms: SiteRenderForm[];
+  pluginAssets: readonly SiteRenderPluginAsset[];
 }
 
 export interface SiteRenderer {

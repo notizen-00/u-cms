@@ -1,6 +1,11 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { activateSitePlugin, deactivateSitePlugin, listSitePlugins } from '$lib/server/api/plugins';
+import {
+	activateSitePlugin,
+	deactivateSitePlugin,
+	listSitePlugins,
+	uninstallSitePlugin
+} from '$lib/server/api/plugins';
 import { getSite } from '$lib/server/api/sites';
 import { ApiError } from '$lib/server/api/client';
 
@@ -47,6 +52,23 @@ export const actions: Actions = {
 
 		try {
 			await deactivateSitePlugin(event, siteId, slug);
+		} catch (err) {
+			if (err instanceof ApiError) {
+				return fail(err.status || 400, { message: err.message });
+			}
+			throw err;
+		}
+
+		return { success: true };
+	},
+
+	uninstall: async (event) => {
+		const { siteId } = event.params;
+		const formData = await event.request.formData();
+		const slug = String(formData.get('slug') ?? '');
+
+		try {
+			await uninstallSitePlugin(event, siteId, slug);
 		} catch (err) {
 			if (err instanceof ApiError) {
 				return fail(err.status || 400, { message: err.message });

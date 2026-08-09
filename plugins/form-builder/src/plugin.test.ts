@@ -18,6 +18,23 @@ describe("formBuilderPlugin", () => {
     expect(formBuilderPlugin.ui?.triggers).toHaveLength(2);
   });
 
+  it("ships its public stylesheet and runtime instead of relying on a theme", () => {
+    const assets = formBuilderPlugin.ui?.assets ?? [];
+
+    expect(assets).toHaveLength(2);
+    expect(assets.map((asset) => asset.id)).toEqual(["styles", "runtime"]);
+    expect(assets.every((asset) => asset.target === "site")).toBe(true);
+
+    const stylesheet = assets.find((asset) => asset.kind === "css");
+    const runtime = assets.find((asset) => asset.kind === "js");
+    expect(stylesheet && "content" in stylesheet ? stylesheet.content : "").toContain(
+      ".cms-form-embed",
+    );
+    expect(runtime && "content" in runtime ? runtime.content : "").toContain(
+      "cms-form-embed",
+    );
+  });
+
   it("registers permissions and a bundling role", () => {
     const keys = formBuilderPlugin.auth?.permissions?.map((permission) => permission.key) ?? [];
     expect(keys).toContain("form-builder.manage");

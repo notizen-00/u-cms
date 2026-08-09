@@ -1,7 +1,7 @@
 {
-  "name": "@unej-cms/sdk-media",
-  "version": "0.1.0",
-  "description": "Runtime-independent media upload and transformation contracts for UNEJ CMS extensions.",
+  "name": "@unej-cms/plugin-auto-avif",
+  "version": "1.0.0",
+  "description": "Official media plugin that converts static JPEG, PNG, and WebP uploads to AVIF.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -27,9 +27,12 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
-    "@unej-cms/sdk-core": "workspace:*"
+    "@unej-cms/sdk-media": "workspace:*",
+    "@unej-cms/sdk-plugin": "workspace:*",
+    "sharp": "^0.35.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.7",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3"
   },

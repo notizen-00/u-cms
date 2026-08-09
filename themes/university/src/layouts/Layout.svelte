@@ -2,7 +2,6 @@
 	let { site, theme, menus, tokensCss, title, body, seo } = $props();
 
 	const scrollRevealScript = __SCROLL_REVEAL_SCRIPT__;
-	const formSubmitScript = __FORM_SUBMIT_SCRIPT__;
 
 	const styles = `
 * { box-sizing: border-box; }
@@ -117,16 +116,6 @@ main { display: block; }
 .cms-embed { position: relative; padding-bottom: 56.25%; height: 0; margin: 1.6em 0; border-radius: var(--theme-radius-card); overflow: hidden; }
 .cms-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .cms-calendar td { text-align: center; }
-.cms-form-embed { margin: 2em 0; padding: 28px; background: var(--theme-surface); border: 1px solid var(--theme-line); border-radius: var(--theme-radius-card); max-width: 560px; }
-.cms-form-title { margin: 0 0 20px; font-size: 20px; font-weight: 800; }
-.cms-form-field { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
-.cms-form-field label { font-weight: 600; font-size: 14px; }
-.cms-form-field input, .cms-form-field textarea, .cms-form-field select { padding: 10px 14px; border: 1px solid var(--theme-line); border-radius: 10px; font: inherit; background: var(--theme-background); color: var(--theme-foreground); }
-.cms-form-field-checkbox label { flex-direction: row; align-items: center; display: flex; gap: 8px; font-weight: 500; }
-.cms-form-submit { padding: 12px 26px; border: 0; border-radius: var(--theme-radius-button); background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
-.cms-form-status { margin-top: 14px; font-size: 14px; font-weight: 600; }
-.cms-form-status-success { color: #16a34a; }
-.cms-form-status-error { color: #dc2626; }
 
 /* Footer */
 .site-footer { background: #071022; color: #cbd5e1; padding: 64px 0 28px; margin-top: 40px; }
@@ -254,4 +243,3 @@ main { display: block; }
 </footer>
 
 {@html `<script>${scrollRevealScript}</script>`}
-{@html `<script>${formSubmitScript}</script>`}

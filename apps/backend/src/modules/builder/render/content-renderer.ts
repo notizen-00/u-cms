@@ -175,9 +175,9 @@ ${control}
 
 /**
  * Expands a `cms-form` embed into a real, submittable <form>. The submit
- * handler (delegated, theme-provided — see each theme's layout template)
- * POSTs JSON to the backend's public submit endpoint and swaps in the
- * success message client-side; see PublicFormsController.
+ * handler is shipped as a Form Builder plugin asset, POSTs JSON to the
+ * backend's public submit endpoint, and swaps in the success message
+ * client-side; see PublicFormsController.
  */
 function renderFormEmbed(form: SiteRenderForm, siteId: string, apiBaseUrl: string): string {
   const action = `${apiBaseUrl}/sites/${siteId}/forms/${form.id}/submit`;

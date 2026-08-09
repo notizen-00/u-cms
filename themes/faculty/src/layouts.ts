@@ -1,5 +1,4 @@
 import { defineLayout } from "@unej-cms/sdk-theme";
-import { FORM_SUBMIT_SCRIPT } from "./form-script.js";
 import { SCROLL_REVEAL_SCRIPT, HERO_VIDEO_SCRIPT } from "./animations.js";
 import {
   LayoutSource,
@@ -21,8 +20,7 @@ import {
 function resolvePlaceholders(source: string): string {
   return source
     .replace("__SCROLL_REVEAL_SCRIPT__", () => JSON.stringify(SCROLL_REVEAL_SCRIPT))
-    .replace("__HERO_VIDEO_SCRIPT__", () => JSON.stringify(HERO_VIDEO_SCRIPT))
-    .replace("__FORM_SUBMIT_SCRIPT__", () => JSON.stringify(FORM_SUBMIT_SCRIPT));
+    .replace("__HERO_VIDEO_SCRIPT__", () => JSON.stringify(HERO_VIDEO_SCRIPT));
 }
 
 export const layoutLayout = defineLayout<string>({

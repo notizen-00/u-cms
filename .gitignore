@@ -6,3 +6,4 @@ coverage/
 *.generated.ts
 .svelte-cache/
 .test-svelte-cache/
+.pnpm-store/

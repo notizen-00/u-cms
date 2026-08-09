@@ -15,3 +15,11 @@ export function activateSitePlugin(event: MinimalEvent, siteId: string, slug: st
 export function deactivateSitePlugin(event: MinimalEvent, siteId: string, slug: string): Promise<SitePlugin> {
 	return apiFetch<SitePlugin>(event, `/sites/${siteId}/plugins/${slug}/deactivate`, { method: 'POST' });
 }
+
+export function uninstallSitePlugin(
+	event: MinimalEvent,
+	siteId: string,
+	slug: string
+): Promise<{ success: boolean }> {
+	return apiFetch<{ success: boolean }>(event, `/sites/${siteId}/plugins/${slug}`, { method: 'DELETE' });
+}

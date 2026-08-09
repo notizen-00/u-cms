@@ -17,7 +17,8 @@ export type PluginCapability =
   | "action"
   | "trigger"
   | "permission"
-  | "event";
+  | "event"
+  | "media-transform";
 
 export interface PluginManifest extends BaseManifest {
   readonly capabilities?: readonly PluginCapability[];

@@ -107,7 +107,7 @@
 	<UploadCloud class="size-8 text-muted-foreground" />
 	<p class="text-sm text-muted-foreground">Seret &amp; lepas file di sini, atau</p>
 	<Button type="button" variant="outline" size="sm" onclick={() => fileInput?.click()}>Pilih File</Button>
-	<p class="text-xs text-muted-foreground">JPG, PNG, GIF, WEBP, SVG, atau PDF — maks. 10MB per file</p>
+	<p class="text-xs text-muted-foreground">JPG, PNG, GIF, WEBP, AVIF, SVG, atau PDF — maks. 10MB per file</p>
 	<input
 		bind:this={fileInput}
 		type="file"

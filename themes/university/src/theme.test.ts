@@ -18,7 +18,8 @@ describe("universityTheme", () => {
   it("exposes the expected settings with defaults", () => {
     expect(universityTheme.settings?.primaryColor?.type).toBe("color");
     expect(universityTheme.settings?.secondaryColor?.type).toBe("color");
-    expect(universityTheme.settings?.statStudents?.default).toBe("15.000+");
+    const statStudents = universityTheme.settings?.statStudents;
+    expect(statStudents && "default" in statStudents ? statStudents.default : undefined).toBe("15.000+");
   });
 
   it("declares fixed design tokens", () => {
@@ -34,8 +35,8 @@ describe("universityTheme", () => {
   it("has no leftover placeholder markers in the layout source (substitution ran)", () => {
     const layout = universityTheme.layouts.find((candidate) => candidate.id === "layout");
     expect(layout?.render).not.toContain("__SCROLL_REVEAL_SCRIPT__");
-    expect(layout?.render).not.toContain("__FORM_SUBMIT_SCRIPT__");
     expect(layout?.render).toContain("IntersectionObserver");
+    expect(layout?.render).not.toContain("cms-form-embed");
   });
 });
 
@@ -65,7 +66,11 @@ describe("layout rendering (Svelte SSR)", () => {
     await writeFile(file, js.code, "utf-8");
     const mod = (await import(pathToFileURL(file).href)) as { default: unknown };
 
-    return render(mod.default as never, { props }) as unknown as { head: string; body: string };
+    const renderComponent = render as unknown as (
+      component: unknown,
+      options: { props: Record<string, unknown> },
+    ) => { head: string; body: string };
+    return renderComponent(mod.default, { props });
   }
 
   const site = { name: "Situs Uji", slug: "test", logoUrl: null, faviconUrl: null };

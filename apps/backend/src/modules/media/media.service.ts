@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { and, count, desc, eq, ilike, not } from 'drizzle-orm';
@@ -13,13 +14,17 @@ import type { AuthenticatedUser } from '../auth/auth.service';
 import type { ListMediaQueryDto } from './dto/list-media.query.dto';
 import type { UpdateMediaDto } from './dto/update-media.dto';
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from './media.constants';
+import { MediaUploadPipelineService } from './media-upload-pipeline.service';
 import { MediaStorageService } from './storage/media-storage.service';
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly storage: MediaStorageService,
+    private readonly pipeline: MediaUploadPipelineService,
   ) {}
 
   async findAll(siteId: string, query: ListMediaQueryDto) {
@@ -89,11 +94,22 @@ export class MediaService {
       );
     }
 
-    let width: number | undefined;
-    let height: number | undefined;
-    if (file.mimetype.startsWith('image/')) {
+    const processed = await this.pipeline.process(siteId, {
+      data: file.buffer,
+      originalName: file.originalname,
+      storageName: file.originalname,
+      mimeType: file.mimetype,
+    });
+    const processedBuffer = Buffer.from(processed.data);
+
+    let width = processed.width;
+    let height = processed.height;
+    if (
+      processed.mimeType.startsWith('image/') &&
+      (width === undefined || height === undefined)
+    ) {
       try {
-        const dimensions = imageSize(file.buffer);
+        const dimensions = imageSize(processedBuffer);
         width = dimensions.width;
         height = dimensions.height;
       } catch {
@@ -101,28 +117,39 @@ export class MediaService {
       }
     }
 
-    const objectKey = this.storage.buildObjectKey(siteId, file.originalname);
-    await this.storage.upload(objectKey, file.buffer, file.mimetype);
+    const objectKey = this.storage.buildObjectKey(siteId, processed.storageName);
+    await this.storage.upload(objectKey, processedBuffer, processed.mimeType);
     const url = this.storage.getPublicUrl(objectKey);
 
-    const [created] = await this.db
-      .insert(media)
-      .values({
-        siteId,
-        uploadedById: uploader.id,
-        objectKey,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        url,
-        altText: meta.altText,
-        caption: meta.caption,
-        width,
-        height,
-      })
-      .returning();
-
-    return created;
+    try {
+      const [created] = await this.db
+        .insert(media)
+        .values({
+          siteId,
+          uploadedById: uploader.id,
+          objectKey,
+          originalName: processed.originalName,
+          mimeType: processed.mimeType,
+          size: processedBuffer.byteLength,
+          url,
+          altText: meta.altText,
+          caption: meta.caption,
+          width,
+          height,
+        })
+        .returning();
+      if (!created) {
+        throw new Error('Database did not return the created media row');
+      }
+      return created;
+    } catch (error) {
+      await this.storage.remove(objectKey).catch((cleanupError: unknown) => {
+        this.logger.warn(
+          `Could not remove orphaned media object "${objectKey}" after database failure: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
+      });
+      throw error;
+    }
   }
 
   async update(siteId: string, id: string, dto: UpdateMediaDto) {

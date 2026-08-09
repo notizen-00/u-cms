@@ -1,6 +1,7 @@
 import { deepFreeze, validateBaseManifest, type LifecycleHooks } from "@unej-cms/sdk-core";
 import type { ActionDefinition, AssetDefinition, BlockDefinition, TriggerDefinition, WidgetDefinition } from "@unej-cms/sdk-ui";
 import type { PermissionDefinition, RoleDefinition } from "@unej-cms/sdk-auth";
+import type { MediaUploadProcessor } from "@unej-cms/sdk-media";
 import type { PluginManifest } from "./manifest.js";
 import type { PluginRuntimeContext } from "./context.js";
 
@@ -22,10 +23,15 @@ export interface PluginAuthRegistrations {
   readonly roles?: readonly RoleDefinition[];
 }
 
+export interface PluginMediaRegistrations {
+  readonly uploadProcessors?: readonly MediaUploadProcessor[];
+}
+
 export interface CmsPlugin<TContext = PluginRuntimeContext> {
   readonly manifest: PluginManifest;
   readonly ui?: PluginUiRegistrations;
   readonly auth?: PluginAuthRegistrations;
+  readonly media?: PluginMediaRegistrations;
   readonly lifecycle?: LifecycleHooks<TContext>;
 }
 

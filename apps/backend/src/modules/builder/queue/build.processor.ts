@@ -20,10 +20,12 @@ import {
   sites,
   tags,
 } from '../../../database/schema';
+import { resolvePluginImplementations } from '../../plugins/plugin-registry';
 import { resolveThemeRenderKind } from '../../themes/theme-registry';
 import { SITE_BUILDS_QUEUE } from '../builder.constants';
 import { AtomicDeployService } from '../deploy/atomic-deploy.service';
 import { EtaSiteRenderer } from '../render/eta-site-renderer';
+import { collectPluginAssets } from '../render/plugin-assets';
 import type { SiteRenderer, SiteRenderMenuItem } from '../render/site-renderer.types';
 import { SvelteSiteRenderer } from '../render/svelte-site-renderer';
 import type { SiteBuildJobData } from './build.producer';
@@ -74,7 +76,9 @@ export class BuildProcessor extends WorkerHost {
         siteId,
         publishedNews,
       );
-      const siteForms = await this.fetchActiveForms(siteId);
+      const activePlugins = await this.fetchActivePlugins(siteId);
+      const activePluginIds = new Set(activePlugins.map((plugin) => plugin.manifest.id));
+      const siteForms = await this.fetchActiveForms(siteId, activePluginIds);
       const menusByLocation = await this.buildMenus(siteId, publishedPages);
 
       const outputDir = await this.deploy.prepareReleaseDir(site.slug, buildId);
@@ -98,6 +102,7 @@ export class BuildProcessor extends WorkerHost {
         news: newsWithTaxonomies,
         pages: publishedPages,
         forms: siteForms,
+        pluginAssets: collectPluginAssets(activePlugins, 'site'),
       });
 
       const currentPath = await this.deploy.activate(site.slug, buildId);
@@ -123,25 +128,31 @@ export class BuildProcessor extends WorkerHost {
     }
   }
 
+  private async fetchActivePlugins(siteId: string) {
+    const rows = await this.db
+      .select({ slug: sitePlugins.pluginSlug })
+      .from(sitePlugins)
+      .where(
+        and(
+          eq(sitePlugins.siteId, siteId),
+          eq(sitePlugins.isActive, true),
+        ),
+      );
+
+    return resolvePluginImplementations(rows.map((row) => row.slug));
+  }
+
   /**
    * Only returns forms when form-builder is active for this site — matches
    * PublicFormsController's own PluginActiveGuard check, so a deactivated
    * plugin consistently stops both rendering *and* accepting submissions
    * instead of leaving stale `cms-form` embeds live on a rebuilt site.
    */
-  private async fetchActiveForms(siteId: string) {
-    const [pluginRow] = await this.db
-      .select({ isActive: sitePlugins.isActive })
-      .from(sitePlugins)
-      .where(
-        and(
-          eq(sitePlugins.siteId, siteId),
-          eq(sitePlugins.pluginSlug, FORM_BUILDER_PLUGIN_ID),
-        ),
-      )
-      .limit(1);
-
-    if (!pluginRow?.isActive) {
+  private async fetchActiveForms(
+    siteId: string,
+    activePluginIds: ReadonlySet<string>,
+  ) {
+    if (!activePluginIds.has(FORM_BUILDER_PLUGIN_ID)) {
       return [];
     }
 
