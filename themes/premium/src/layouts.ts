@@ -377,6 +377,7 @@ export const layoutLayout = defineLayout<string>({
       <% if (it.site.logoUrl) { %><img src="<%= it.site.logoUrl %>" alt="<%= it.site.name %>"><% } %>
       <span><%= it.site.name %></span>
     </a>
+    <h1>KONTOLL</h1>
     <nav class="main-nav">
       <% if (it.menus.primary && it.menus.primary.length > 0) { %>
       <%
@@ -477,7 +478,7 @@ export const homeLayout = defineLayout<string>({
 <a href="/news/">Lihat semua →</a>
 </div>
 <% if (it.news.length === 0) { %>
-<div class="empty-state">Belum ada berita.</div>
+<div class="empty-state">Belum ada beritssa.</div>
 <% } else { %>
 <div class="card-grid">
 <% it.news.forEach(function(item) { %>

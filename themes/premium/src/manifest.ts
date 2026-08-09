@@ -5,7 +5,7 @@ export const THEME_VERSION = "1.0.0";
 
 export const manifest: ThemeManifest = {
   id: THEME_ID,
-  name: "Premium",
+  name: "Delta ",
   version: THEME_VERSION,
   author: { name: "UNEJ CMS Team" },
   description:
@@ -13,6 +13,6 @@ export const manifest: ThemeManifest = {
   license: "UNLICENSED",
   compatibility: {
     cms: { min: "1.0.0" },
-    sdk: { min: "1.0.0" },
+    sdk: { min: "1.0.0" },              
   },
 };
