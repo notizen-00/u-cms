@@ -157,6 +157,8 @@
 				Image
 			)}
 
+			<hr>
+
 			{@render navLink(
 				`/sites/${activeSite.id}/plugins`,
 				'Plugins',
