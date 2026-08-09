@@ -1,0 +1,673 @@
+/**
+ * The single content surface used by BOTH the editor canvas and the preview
+ * pane. Everything here mirrors what the published site ships:
+ *
+ *   - core markdown output  -> backend ContentRenderer
+ *   - `.cms-*` widgets      -> backend ContentRenderer
+ *   - `.cms-pb-*` sections  -> plugins/page-builder/src/assets.ts
+ *
+ * Keeping one stylesheet (instead of a second, drifting copy inside the editor
+ * component) is what makes the canvas actually WYSIWYG. Editing affordances —
+ * outlines, handles, placeholders — deliberately live in the editor components
+ * instead, so nothing cosmetic to the editor can leak into what authors judge
+ * their published page by.
+ *
+ * `container-type: inline-size` on the root is what lets the device-width
+ * toggle reflow the sections exactly like a real viewport would.
+ */
+
+.cms-content {
+	--cms-primary: var(--primary, #075985);
+	--cms-surface: var(--card, #ffffff);
+	--cms-background: var(--background, #ffffff);
+	--cms-foreground: var(--foreground, #07152b);
+	--cms-muted: var(--muted-foreground, #64748b);
+	--cms-line: var(--border, #dfe5ed);
+	--cms-radius: 0.875rem;
+
+	container-type: inline-size;
+	color: var(--cms-foreground);
+	font-size: 1rem;
+	line-height: 1.7;
+	word-break: break-word;
+}
+
+.cms-content > *:first-child {
+	margin-block-start: 0;
+}
+.cms-content > *:last-child {
+	margin-block-end: 0;
+}
+
+/* ---------------------------------------------------------------- typography */
+
+.cms-content h1,
+.cms-content h2,
+.cms-content h3,
+.cms-content h4,
+.cms-content h5,
+.cms-content h6 {
+	margin: 1.6em 0 0.5em;
+	font-weight: 700;
+	letter-spacing: -0.018em;
+	line-height: 1.22;
+	text-wrap: balance;
+}
+.cms-content h1 {
+	font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+}
+.cms-content h2 {
+	font-size: clamp(1.5rem, 2.6vw, 1.95rem);
+}
+.cms-content h3 {
+	font-size: clamp(1.2rem, 2vw, 1.45rem);
+}
+.cms-content h4 {
+	font-size: 1.1rem;
+}
+
+.cms-content p {
+	margin: 0 0 1.1em;
+	line-height: 1.75;
+}
+
+.cms-content ul,
+.cms-content ol {
+	margin: 0 0 1.1em;
+	padding-left: 1.5em;
+}
+.cms-content ul {
+	list-style: disc;
+}
+.cms-content ol {
+	list-style: decimal;
+}
+.cms-content li {
+	margin-bottom: 0.35em;
+}
+.cms-content li::marker {
+	color: var(--cms-muted);
+}
+
+.cms-content a {
+	color: var(--cms-primary);
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+.cms-content strong {
+	font-weight: 700;
+}
+.cms-content em {
+	font-style: italic;
+}
+
+.cms-content blockquote {
+	margin: 0 0 1.1em;
+	padding: 0.15em 0 0.15em 1.1em;
+	border-left: 3px solid var(--cms-primary);
+	color: var(--cms-muted);
+	font-size: 1.05em;
+	font-style: italic;
+}
+.cms-content blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+.cms-content code {
+	padding: 0.15em 0.4em;
+	background: color-mix(in srgb, var(--cms-line) 45%, transparent);
+	border-radius: 0.3rem;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.86em;
+}
+.cms-content pre {
+	margin: 0 0 1.1em;
+	padding: 1rem 1.15rem;
+	overflow-x: auto;
+	background: #0f172a;
+	border-radius: 0.6rem;
+	color: #e2e8f0;
+	line-height: 1.6;
+}
+.cms-content pre code {
+	padding: 0;
+	background: none;
+	color: inherit;
+	font-size: 0.85em;
+}
+
+.cms-content hr {
+	margin: 2.25em 0;
+	border: 0;
+	border-top: 1px solid var(--cms-line);
+}
+
+.cms-content img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 0.5rem;
+}
+
+.cms-content figure {
+	margin: 0;
+}
+
+/* ------------------------------------------------------------- core widgets */
+
+.cms-content table {
+	width: 100%;
+	margin: 0 0 1.25em;
+	border-collapse: collapse;
+	font-size: 0.94em;
+}
+.cms-content th,
+.cms-content td {
+	padding: 0.6em 0.8em;
+	border: 1px solid var(--cms-line);
+	text-align: left;
+}
+.cms-content th {
+	background: color-mix(in srgb, var(--cms-line) 32%, transparent);
+	font-weight: 650;
+}
+.cms-content caption {
+	padding-bottom: 0.55em;
+	caption-side: top;
+	font-weight: 700;
+	text-align: left;
+}
+
+.cms-content .cms-calendar caption {
+	padding: 0.5rem 0;
+	font-size: 1.05rem;
+}
+.cms-content .cms-calendar td {
+	text-align: center;
+}
+
+.cms-content .cms-button {
+	display: inline-flex;
+	min-height: 2.75rem;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.7rem 1.25rem;
+	background: var(--cms-primary);
+	border-radius: 0.625rem;
+	color: #fff;
+	font-weight: 700;
+	line-height: 1.2;
+	text-decoration: none;
+}
+
+.cms-content .cms-columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+	gap: 1.25rem;
+	margin: 1.75rem 0;
+}
+.cms-content .cms-column {
+	min-width: 0;
+	padding: 1.25rem;
+	background: var(--cms-surface);
+	border: 1px solid var(--cms-line);
+	border-radius: 0.75rem;
+}
+
+.cms-content .cms-embed {
+	position: relative;
+	width: 100%;
+	height: 0;
+	margin: 1.75rem 0;
+	padding-bottom: 56.25%;
+	overflow: hidden;
+	background: #0f172a;
+	border-radius: 0.75rem;
+}
+.cms-content .cms-embed iframe {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+
+/* Placeholder only — the published site expands this into a real <form> at
+   build time from the form's live field config, which the editor lacks. */
+.cms-content .cms-form {
+	padding: 1.5rem;
+	border: 2px dashed var(--cms-line);
+	border-radius: 0.75rem;
+	color: var(--cms-muted);
+	font-size: 0.9rem;
+	font-weight: 550;
+	text-align: center;
+}
+
+/* --------------------------------------------------- page builder sections */
+
+.cms-content :where(.cms-pb-hero, .cms-pb-callout, .cms-pb-card-grid, .cms-pb-gallery, .cms-pb-stats, .cms-pb-faq) {
+	box-sizing: border-box;
+}
+
+.cms-content .cms-pb-hero {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1.1fr) minmax(14rem, 0.9fr);
+	align-items: stretch;
+	min-height: clamp(20rem, 42vw, 30rem);
+	margin: 2rem 0;
+	overflow: hidden;
+	background: var(--cms-surface);
+	border: 1px solid var(--cms-line);
+	border-radius: var(--cms-radius);
+	box-shadow: 0 20px 55px rgb(15 23 42 / 0.1);
+}
+.cms-content .cms-pb-hero__media {
+	order: 2;
+	min-height: 15rem;
+	background: color-mix(in srgb, var(--cms-line) 45%, transparent);
+}
+.cms-content .cms-pb-hero__media img {
+	width: 100%;
+	height: 100%;
+	min-height: 100%;
+	border-radius: 0;
+	object-fit: cover;
+}
+.cms-content .cms-pb-hero--no-media {
+	grid-template-columns: 1fr;
+	min-height: clamp(15rem, 30vw, 22rem);
+}
+.cms-content .cms-pb-hero__content {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	padding: clamp(1.75rem, 5vw, 3.5rem);
+}
+.cms-content .cms-pb-hero__eyebrow {
+	margin: 0 0 0.9rem;
+	color: var(--cms-primary);
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+.cms-content .cms-pb-hero__title {
+	max-width: 18ch;
+	margin: 0;
+	font-size: clamp(1.85rem, 4vw, 3.25rem);
+	font-weight: 800;
+	letter-spacing: -0.035em;
+	line-height: 1.05;
+}
+.cms-content .cms-pb-hero__text {
+	max-width: 58ch;
+	margin: 1.1rem 0 1.6rem;
+	color: var(--cms-muted);
+	font-size: clamp(1rem, 1.5vw, 1.15rem);
+	line-height: 1.7;
+}
+.cms-content .cms-pb-hero.cms-pb-align-center {
+	grid-template-columns: 1fr;
+	text-align: center;
+}
+.cms-content .cms-pb-hero.cms-pb-align-center .cms-pb-hero__content {
+	align-items: center;
+}
+.cms-content .cms-pb-hero.cms-pb-align-center .cms-pb-hero__media {
+	order: -1;
+	max-height: 22rem;
+}
+
+.cms-content .cms-pb-callout {
+	margin: 2rem 0;
+	padding: clamp(1.5rem, 4vw, 2.75rem);
+	background: var(--cms-surface);
+	border: 1px solid var(--cms-line);
+	border-left: 0.35rem solid var(--cms-primary);
+	border-radius: var(--cms-radius);
+}
+.cms-content .cms-pb-callout__title {
+	margin: 0 0 0.65rem;
+	font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+	line-height: 1.2;
+}
+.cms-content .cms-pb-callout__text {
+	max-width: 62ch;
+	margin: 0 0 1.25rem;
+	line-height: 1.7;
+}
+.cms-content .cms-pb-callout.cms-pb-align-center {
+	border-left-width: 1px;
+	text-align: center;
+}
+.cms-content .cms-pb-callout.cms-pb-align-center .cms-pb-callout__text {
+	margin-inline: auto;
+}
+
+.cms-content .cms-pb-card-grid,
+.cms-content .cms-pb-gallery {
+	display: grid;
+	grid-template-columns: repeat(var(--cms-pb-columns, 3), minmax(0, 1fr));
+	margin: 2rem 0;
+}
+.cms-content .cms-pb-card-grid {
+	gap: 1.25rem;
+}
+.cms-content .cms-pb-gallery {
+	gap: 0.85rem;
+}
+.cms-content .cms-pb-cols-2 {
+	--cms-pb-columns: 2;
+}
+.cms-content .cms-pb-cols-3 {
+	--cms-pb-columns: 3;
+}
+.cms-content .cms-pb-cols-4 {
+	--cms-pb-columns: 4;
+}
+.cms-content .cms-pb-card-grid__title,
+.cms-content .cms-pb-card-grid__text,
+.cms-content .cms-pb-gallery__title {
+	grid-column: 1 / -1;
+}
+.cms-content .cms-pb-card-grid__title,
+.cms-content .cms-pb-gallery__title,
+.cms-content .cms-pb-stats__title,
+.cms-content .cms-pb-faq__title {
+	margin: 0;
+	font-size: clamp(1.45rem, 2.6vw, 2rem);
+	line-height: 1.2;
+}
+.cms-content .cms-pb-card-grid__text {
+	max-width: 62ch;
+	margin: -0.35rem 0 0.4rem;
+	color: var(--cms-muted);
+	line-height: 1.7;
+}
+
+.cms-content .cms-pb-card {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--cms-surface);
+	border: 1px solid var(--cms-line);
+	border-radius: var(--cms-radius);
+	box-shadow: 0 10px 30px rgb(15 23 42 / 0.07);
+}
+.cms-content .cms-pb-card__media {
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: color-mix(in srgb, var(--cms-line) 45%, transparent);
+}
+.cms-content .cms-pb-card__media img {
+	width: 100%;
+	height: 100%;
+	border-radius: 0;
+	object-fit: cover;
+}
+.cms-content .cms-pb-card__body {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 1.35rem;
+}
+.cms-content .cms-pb-card__title {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 750;
+	line-height: 1.3;
+}
+.cms-content .cms-pb-card__text {
+	margin: 0.6rem 0 0;
+	color: var(--cms-muted);
+	line-height: 1.65;
+}
+.cms-content .cms-pb-card__link {
+	margin-top: auto;
+	padding-top: 1rem;
+	color: var(--cms-primary);
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.cms-content .cms-pb-gallery__item {
+	min-width: 0;
+	margin: 0;
+	overflow: hidden;
+	background: var(--cms-surface);
+	border-radius: 0.75rem;
+}
+.cms-content .cms-pb-gallery__image {
+	display: block;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	border-radius: 0;
+	object-fit: cover;
+}
+.cms-content .cms-pb-gallery__caption {
+	padding: 0.6rem 0.75rem;
+	color: var(--cms-muted);
+	font-size: 0.86rem;
+	line-height: 1.45;
+}
+
+.cms-content .cms-pb-stats {
+	margin: 2rem 0;
+}
+.cms-content .cms-pb-stats__title {
+	margin-bottom: 1rem;
+}
+.cms-content .cms-pb-stats__list {
+	display: grid;
+	grid-template-columns: repeat(var(--cms-pb-columns, 3), minmax(0, 1fr));
+	gap: 1px;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background: var(--cms-line);
+	border: 1px solid var(--cms-line);
+	border-radius: var(--cms-radius);
+}
+.cms-content .cms-pb-stat {
+	display: flex;
+	min-height: 8.5rem;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 1.4rem;
+	background: var(--cms-surface);
+	text-align: center;
+}
+.cms-content .cms-pb-stat__value {
+	margin: 0;
+	color: var(--cms-primary);
+	font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 1;
+}
+.cms-content .cms-pb-stat__label {
+	margin: 0.55rem 0 0;
+	color: var(--cms-muted);
+	font-size: 0.88rem;
+	font-weight: 600;
+}
+
+.cms-content .cms-pb-faq {
+	margin: 2rem 0;
+	border-top: 1px solid var(--cms-line);
+}
+.cms-content .cms-pb-faq__title {
+	padding: 0 0 1rem;
+}
+.cms-content .cms-pb-faq__item {
+	border-bottom: 1px solid var(--cms-line);
+}
+.cms-content .cms-pb-faq__question {
+	position: relative;
+	padding: 1.1rem 2.75rem 1.1rem 0.25rem;
+	cursor: pointer;
+	font-weight: 700;
+	list-style: none;
+}
+.cms-content .cms-pb-faq__question::-webkit-details-marker {
+	display: none;
+}
+.cms-content .cms-pb-faq__question::after {
+	position: absolute;
+	top: 50%;
+	right: 0.4rem;
+	width: 1.6rem;
+	height: 1.6rem;
+	content: '+';
+	transform: translateY(-50%);
+	color: var(--cms-primary);
+	font-size: 1.35rem;
+	line-height: 1.6rem;
+	text-align: center;
+}
+.cms-content .cms-pb-faq__item[open] .cms-pb-faq__question::after {
+	content: '−';
+}
+.cms-content .cms-pb-faq__answer {
+	padding: 0 2.75rem 1.15rem 0.25rem;
+	color: var(--cms-muted);
+	line-height: 1.7;
+}
+.cms-content .cms-pb-faq__answer p {
+	margin: 0;
+}
+
+.cms-content .cms-pb-spacer {
+	width: 100%;
+}
+.cms-content .cms-pb-space-sm {
+	height: 1.5rem;
+}
+.cms-content .cms-pb-space-md {
+	height: 3rem;
+}
+.cms-content .cms-pb-space-lg {
+	height: 5rem;
+}
+
+/* ------------------------------------------------------------------- tones */
+/* Declared after every section base so a component background cannot override
+   the selected tone — same ordering rule the plugin stylesheet relies on. */
+
+.cms-content .cms-pb-tone-primary {
+	background: linear-gradient(135deg, var(--cms-primary), color-mix(in srgb, var(--cms-primary) 72%, #111827));
+	border-color: transparent;
+	color: #fff;
+}
+.cms-content .cms-pb-tone-dark {
+	background: linear-gradient(135deg, #0f172a, #263449);
+	border-color: transparent;
+	color: #fff;
+}
+.cms-content .cms-pb-tone-soft {
+	background: color-mix(in srgb, var(--cms-primary) 8%, var(--cms-background));
+}
+.cms-content .cms-pb-tone-info {
+	background: #eff8ff;
+	border-color: #9bd4ff;
+}
+.cms-content .cms-pb-tone-success {
+	background: #effcf4;
+	border-color: #86d9a5;
+}
+.cms-content .cms-pb-tone-warning {
+	background: #fff8e6;
+	border-color: #f7ce72;
+}
+
+.cms-content
+	:where(.cms-pb-card-grid, .cms-pb-gallery, .cms-pb-stats, .cms-pb-faq):where(
+		.cms-pb-tone-primary,
+		.cms-pb-tone-dark,
+		.cms-pb-tone-soft,
+		.cms-pb-tone-info,
+		.cms-pb-tone-success,
+		.cms-pb-tone-warning
+	) {
+	padding: clamp(1.25rem, 3.5vw, 2.5rem);
+	border: 1px solid var(--cms-line);
+	border-radius: var(--cms-radius);
+}
+.cms-content
+	:where(.cms-pb-tone-primary, .cms-pb-tone-dark)
+	:where(
+		.cms-pb-hero__eyebrow,
+		.cms-pb-hero__text,
+		.cms-pb-callout__text,
+		.cms-pb-card-grid__title,
+		.cms-pb-card-grid__text,
+		.cms-pb-gallery__title,
+		.cms-pb-stats__title,
+		.cms-pb-faq__title,
+		.cms-pb-faq__answer
+	) {
+	color: rgb(255 255 255 / 0.84);
+}
+.cms-content :where(.cms-pb-tone-primary, .cms-pb-tone-dark) .cms-button {
+	background: #fff;
+	color: #111827;
+}
+
+.cms-content .cms-pb-align-center {
+	text-align: center;
+}
+.cms-content .cms-pb-card-grid.cms-pb-align-center .cms-pb-card__body {
+	align-items: center;
+}
+.cms-content .cms-pb-gallery.cms-pb-align-center .cms-pb-gallery__caption {
+	text-align: center;
+}
+
+/* --------------------------------------------------------- device reflow */
+/* Container queries, not media queries: the canvas reflows against the width of
+   the device frame the author picked, not the browser window. */
+
+@container (max-width: 60rem) {
+	.cms-content .cms-pb-hero {
+		grid-template-columns: 1fr;
+	}
+	.cms-content .cms-pb-hero__media {
+		order: -1;
+		max-height: 20rem;
+	}
+	.cms-content .cms-pb-cols-4 {
+		--cms-pb-columns: 2;
+	}
+}
+
+@container (max-width: 42rem) {
+	.cms-content .cms-pb-hero {
+		min-height: 0;
+	}
+	.cms-content .cms-pb-hero__content {
+		padding: 1.5rem;
+	}
+	.cms-content .cms-pb-card-grid,
+	.cms-content .cms-pb-gallery {
+		--cms-pb-columns: 1;
+	}
+	.cms-content .cms-pb-stats {
+		--cms-pb-columns: 2;
+	}
+	.cms-content .cms-pb-spacer.cms-pb-space-lg {
+		height: 3rem;
+	}
+}
+
+@container (max-width: 28rem) {
+	.cms-content .cms-pb-stats {
+		--cms-pb-columns: 1;
+	}
+}

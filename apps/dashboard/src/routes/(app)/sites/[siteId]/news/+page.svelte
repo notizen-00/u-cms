@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Select } from '$lib/components/ui/select';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
@@ -29,6 +30,7 @@
 
 	const columns = [
 		{ label: 'Judul' },
+		{ label: 'Kategori & Tag' },
 		{ label: 'Status' },
 		{ label: 'Penulis' },
 		{ label: 'Diperbarui' }
@@ -68,7 +70,21 @@
 				<TableCell>
 					<a href="/sites/{data.site.id}/news/{item.id}" class="font-medium hover:underline">{item.title}</a>
 				</TableCell>
-				<TableCell><StatusBadge status={item.status} /></TableCell>
+				<TableCell>
+				{#if item.categories.length === 0 && item.tags.length === 0}
+					<span class="text-muted-foreground">-</span>
+				{:else}
+					<div class="flex flex-wrap gap-1">
+						{#each item.categories as category (category.id)}
+							<Badge variant="secondary">{category.name}</Badge>
+						{/each}
+						{#each item.tags as tag (tag.id)}
+							<Badge variant="outline">#{tag.name}</Badge>
+						{/each}
+					</div>
+				{/if}
+			</TableCell>
+			<TableCell><StatusBadge status={item.status} /></TableCell>
 				<TableCell class="text-muted-foreground">{item.authorName ?? '-'}</TableCell>
 				<TableCell class="text-muted-foreground">{formatDate(item.updatedAt)}</TableCell>
 			</TableRow>

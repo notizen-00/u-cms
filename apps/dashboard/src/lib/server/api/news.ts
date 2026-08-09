@@ -12,7 +12,13 @@ export function getNewsItem(event: MinimalEvent, siteId: string, newsId: string)
 	return apiFetch<NewsItem>(event, `/sites/${siteId}/news/${newsId}`);
 }
 
-/** `excerpt`/`featuredImageUrl` are `.optional()`, NOT `.nullable()` (create-news.dto.ts) — omit rather than send `null`. */
+/**
+ * `excerpt`/`featuredImageUrl` are `.optional()`, NOT `.nullable()` (create-news.dto.ts) — omit rather than send `null`.
+ *
+ * `categoryIds`/`tagIds` replace the whole set when present and are left
+ * untouched when absent (news.service.ts `update`), so an empty array is how
+ * you clear them — never omit the field just because nothing is selected.
+ */
 export interface NewsInput {
 	title: string;
 	slug: string;
@@ -20,6 +26,8 @@ export interface NewsInput {
 	bodyMarkdown: string;
 	featuredImageUrl?: string;
 	status?: ContentStatus;
+	categoryIds?: string[];
+	tagIds?: string[];
 }
 
 export function createNews(event: MinimalEvent, siteId: string, input: NewsInput): Promise<NewsItem> {

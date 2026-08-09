@@ -1,14 +1,29 @@
 <script lang="ts">
+	/**
+	 * Full-page block editor shell.
+	 *
+	 * The whole document lives inside this component — title, canvas and the
+	 * per-document settings the route supplies as snippets — so editing is one
+	 * uninterrupted surface instead of a form with an editor widget dropped into
+	 * it. Blocks are edited directly on the canvas (see BlockCanvas), with the
+	 * right-hand inspector reserved for the settings that have no natural
+	 * on-canvas representation.
+	 *
+	 * Whatever the mode, the hidden textarea below is what actually submits, so
+	 * the surrounding <form> never needs to know any of this exists.
+	 */
+	import type { Snippet } from 'svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import MediaPicker from '$lib/components/app/media/MediaPicker.svelte';
+	import BlockCanvas from './BlockCanvas.svelte';
 	import BlockFields from './BlockFields.svelte';
 	import {
 		BLOCK_CATEGORIES,
 		BLOCK_TYPE_LABELS,
-		OVERLAY_EDITED_TYPES,
+		INSPECTOR_FIRST_TYPES,
 		PAGE_BUILDER_PATTERNS,
 		PAGE_BUILDER_RICH_TYPES,
 		blocksToMarkdown,
@@ -20,6 +35,13 @@
 		type BlockType,
 		type PageBuilderPatternId
 	} from '$lib/editor/blocks';
+	import {
+		applyInlineFormat,
+		applyInlineLink,
+		firstEditableIn,
+		focusEditable,
+		selectionEditable
+	} from '$lib/editor/inline';
 	import { renderMarkdown } from '$lib/editor/render';
 	import type { CmsForm, Media } from '$lib/types';
 	import { cn } from '$lib/utils';
@@ -29,10 +51,16 @@
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import Copy from '@lucide/svelte/icons/copy';
-	import Pencil from '@lucide/svelte/icons/pencil';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
-	import Columns2 from '@lucide/svelte/icons/columns-2';
 	import Search from '@lucide/svelte/icons/search';
+	import Settings2 from '@lucide/svelte/icons/settings-2';
+	import X from '@lucide/svelte/icons/x';
+	import Link2 from '@lucide/svelte/icons/link-2';
+	import Bold from '@lucide/svelte/icons/bold';
+	import Italic from '@lucide/svelte/icons/italic';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import Maximize2 from '@lucide/svelte/icons/maximize-2';
+	import Minimize2 from '@lucide/svelte/icons/minimize-2';
 
 	import Heading2 from '@lucide/svelte/icons/heading-2';
 	import Pilcrow from '@lucide/svelte/icons/pilcrow';
@@ -42,6 +70,7 @@
 	import Code from '@lucide/svelte/icons/code';
 	import Minus from '@lucide/svelte/icons/minus';
 	import TableIcon from '@lucide/svelte/icons/table';
+	import Columns2 from '@lucide/svelte/icons/columns-2';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
 	import Video from '@lucide/svelte/icons/video';
@@ -55,6 +84,7 @@
 	import CircleQuestion from '@lucide/svelte/icons/circle-question-mark';
 	import MoveVertical from '@lucide/svelte/icons/move-vertical';
 	import PanelLeft from '@lucide/svelte/icons/panel-left';
+	import PanelRight from '@lucide/svelte/icons/panel-right';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Tablet from '@lucide/svelte/icons/tablet';
 	import Smartphone from '@lucide/svelte/icons/smartphone';
@@ -68,7 +98,13 @@
 		siteId,
 		forms = [],
 		enabled = false,
-		formBuilderEnabled = false
+		formBuilderEnabled = false,
+		backHref,
+		backLabel = 'Kembali',
+		documentLabel = 'Dokumen',
+		documentHeader,
+		documentPanel,
+		actions
 	}: {
 		value?: string;
 		name: string;
@@ -76,13 +112,22 @@
 		forms?: CmsForm[];
 		enabled?: boolean;
 		formBuilderEnabled?: boolean;
+		backHref?: string;
+		backLabel?: string;
+		documentLabel?: string;
+		/** Title/slug row, rendered at the top of the canvas like a real page. */
+		documentHeader?: Snippet;
+		/** Per-document settings for the inspector's first tab. */
+		documentPanel?: Snippet;
+		/** Save/publish/delete controls for the top bar. */
+		actions?: Snippet;
 	} = $props();
 
 	type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
-	const PREVIEW_DEVICES: { id: PreviewDevice; label: string; icon: typeof Monitor }[] = [
-		{ id: 'desktop', label: 'Desktop', icon: Monitor },
-		{ id: 'tablet', label: 'Tablet', icon: Tablet },
-		{ id: 'mobile', label: 'Mobile', icon: Smartphone }
+	const PREVIEW_DEVICES: { id: PreviewDevice; label: string; icon: typeof Monitor; width: string }[] = [
+		{ id: 'desktop', label: 'Desktop', icon: Monitor, width: '72rem' },
+		{ id: 'tablet', label: 'Tablet', icon: Tablet, width: '48rem' },
+		{ id: 'mobile', label: 'Mobile', icon: Smartphone, width: '25rem' }
 	];
 
 	const BLOCK_ICONS: Record<BlockType, typeof Heading2> = {
@@ -110,29 +155,36 @@
 	};
 
 	let mode = $state<'visual' | 'preview' | 'code'>('visual');
-	let splitPreview = $state(false);
-	let listViewOpen = $state(false);
+	let fullscreen = $state(false);
+	let structureOpen = $state(false);
+	let inspectorOpen = $state(true);
+	let inspectorTab = $state<'document' | 'block'>('document');
 	let previewDevice = $state<PreviewDevice>('desktop');
+	let canvasEl = $state<HTMLElement | null>(null);
+
 	const initialBlocks = value ? markdownToBlocks(value) : [createBlock('paragraph')];
 	let blocks = $state<Block[]>(initialBlocks);
-	let selectedId = $state<string | null>(null);
+	let selectedId = $state<string | null>(initialBlocks[0]?.id ?? null);
+	let pendingFocusId = $state<string | null>(null);
+
 	const pageBuilderTypes = new Set<BlockType>(PAGE_BUILDER_RICH_TYPES);
 	let history = $state<string[]>([JSON.stringify(initialBlocks)]);
 	let historyIndex = $state(0);
 	let historyTimer: ReturnType<typeof setTimeout> | undefined;
 
+	/** Routes without a document panel only ever have the Block tab to show. */
+	const activeTab = $derived(inspectorTab === 'document' && documentPanel ? 'document' : 'block');
 	const markdown = $derived(mode === 'visual' ? blocksToMarkdown(blocks) : value);
+	const selectedBlock = $derived(blocks.find((block) => block.id === selectedId) ?? null);
+	const canvasWidth = $derived(PREVIEW_DEVICES.find((d) => d.id === previewDevice)?.width ?? '72rem');
 	const wordCount = $derived.by(() => {
 		const plain = markdown
 			.replace(/<!--[\s\S]*?-->/g, ' ')
 			.replace(/<[^>]+>/g, ' ')
-			.replace(/[#>*_`|\[\]()-]/g, ' ')
+			.replace(/[#>*_`|[\]()-]/g, ' ')
 			.trim();
 		return plain ? plain.split(/\s+/).length : 0;
 	});
-	const previewWidth = $derived(
-		previewDevice === 'mobile' ? 'max-w-[375px]' : previewDevice === 'tablet' ? 'max-w-[768px]' : 'max-w-none'
-	);
 
 	// Keep the submitted value in sync while editing on the canvas.
 	$effect(() => {
@@ -154,6 +206,23 @@
 		return () => clearTimeout(historyTimer);
 	});
 
+	// Newly created/merged blocks take the caret, so typing never stops.
+	$effect(() => {
+		if (!pendingFocusId) return;
+		const wrapper = canvasEl?.querySelector(`[data-block-id="${pendingFocusId}"]`);
+		focusEditable(firstEditableIn(wrapper));
+		pendingFocusId = null;
+	});
+
+	$effect(() => {
+		if (!fullscreen) return;
+		const previous = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = previous;
+		};
+	});
+
 	function restoreHistory(index: number) {
 		if (index < 0 || index >= history.length) return;
 		blocks = JSON.parse(history[index]) as Block[];
@@ -161,10 +230,23 @@
 		selectedId = blocks.some((block) => block.id === selectedId) ? selectedId : blocks[0]?.id ?? null;
 	}
 
-	function onEditorKeydown(event: KeyboardEvent) {
-		if (mode !== 'visual' || (!event.ctrlKey && !event.metaKey) || event.key.toLowerCase() !== 'z') return;
+	function onWindowKeydown(event: KeyboardEvent) {
 		const target = event.target as HTMLElement | null;
-		if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+		const typing = target?.matches('input, textarea, select, [contenteditable]') ?? false;
+
+		if (event.key === 'Escape' && fullscreen && !typing) {
+			fullscreen = false;
+			return;
+		}
+		if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
+			event.preventDefault();
+			fullscreen = !fullscreen;
+			return;
+		}
+		// Inside a contenteditable the browser's own undo stack is the better
+		// one — it restores the caret too. Block-level history takes over
+		// everywhere else on the canvas.
+		if (mode !== 'visual' || typing || (!event.ctrlKey && !event.metaKey) || event.key.toLowerCase() !== 'z') return;
 		event.preventDefault();
 		restoreHistory(historyIndex + (event.shiftKey ? 1 : -1));
 	}
@@ -174,42 +256,64 @@
 		if (target instanceof Element && target.closest('a')) event.preventDefault();
 	}
 
-	function onCanvasBlockClick(event: MouseEvent, blockId: string) {
-		selectedId = blockId;
-		preventPreviewNavigation(event);
-	}
-
 	function switchToVisual() {
 		blocks = value ? markdownToBlocks(value) : [createBlock('paragraph')];
+		selectedId = blocks[0]?.id ?? null;
 		mode = 'visual';
+	}
+
+	function selectBlock(id: string) {
+		selectedId = id;
+		if (inspectorOpen) inspectorTab = 'block';
 	}
 
 	/* ---------------- block operations ---------------- */
 
-	function insertBlock(type: BlockType, index: number | null = null, openAfterMs = 0) {
-		const block = createBlock(type);
-		const at = index ?? blocks.length;
-		blocks = [...blocks.slice(0, at), block, ...blocks.slice(at)];
-		selectedId = block.id;
-		if (!OVERLAY_EDITED_TYPES.includes(type)) return;
-
-		// Blocks that need configuring open straight into the overlay. When this came from
-		// the inserter we wait for its close animation first — two dialogs open at once
-		// would stack their overlays and darken the screen twice over.
-		if (openAfterMs > 0) {
-			setTimeout(() => openOverlay(block.id), openAfterMs);
-		} else {
-			openOverlay(block.id);
-		}
+	function indexOf(id: string | null): number {
+		return blocks.findIndex((block) => block.id === id);
 	}
 
-	function removeBlock(id: string) {
-		blocks = blocks.length > 1 ? blocks.filter((b) => b.id !== id) : [createBlock('paragraph')];
+	function insertBlock(type: BlockType, index: number | null = null, replaceId: string | null = null) {
+		const block = createBlock(type);
+		let at = index ?? blocks.length;
+		if (replaceId) {
+			const replaceAt = indexOf(replaceId);
+			if (replaceAt >= 0) {
+				blocks = [...blocks.slice(0, replaceAt), block, ...blocks.slice(replaceAt + 1)];
+				selectedId = block.id;
+				afterInsert(block);
+				return;
+			}
+			at = blocks.length;
+		}
+		blocks = [...blocks.slice(0, at), block, ...blocks.slice(at)];
+		selectedId = block.id;
+		afterInsert(block);
+	}
+
+	/** Blocks with nothing to type into send the author straight to the inspector. */
+	function afterInsert(block: Block) {
+		if (INSPECTOR_FIRST_TYPES.includes(block.type)) {
+			inspectorOpen = true;
+			inspectorTab = 'block';
+		}
+		pendingFocusId = block.id;
+	}
+
+	function removeBlock(id: string, focusPrevious = false) {
+		const at = indexOf(id);
+		if (at < 0) return;
+		const previous = blocks[at - 1] ?? blocks[at + 1] ?? null;
+		blocks = blocks.length > 1 ? blocks.filter((block) => block.id !== id) : [createBlock('paragraph')];
+		const next = previous && blocks.some((block) => block.id === previous.id) ? previous.id : blocks[0]?.id ?? null;
+		selectedId = next;
+		if (focusPrevious) pendingFocusId = next;
 	}
 
 	function duplicate(index: number) {
 		const copy = duplicateBlock(blocks[index]);
 		blocks = [...blocks.slice(0, index + 1), copy, ...blocks.slice(index + 1)];
+		selectedId = copy.id;
 	}
 
 	function moveBlock(index: number, direction: -1 | 1) {
@@ -220,11 +324,24 @@
 		blocks = copy;
 	}
 
+	/** Enter at the end of a block continues writing in a fresh paragraph. */
+	function appendParagraph(afterId: string) {
+		const at = indexOf(afterId);
+		insertBlock('paragraph', at < 0 ? null : at + 1);
+	}
+
+	function onBlockEmptyBackspace(id: string) {
+		if (blocks.length <= 1) return;
+		removeBlock(id, true);
+	}
+
 	/* ---------------- drag to reorder ---------------- */
 
 	let dragIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
 	let handleArmedId = $state<string | null>(null);
+
+	const dropsAfter = $derived(dragIndex !== null && dragOverIndex !== null && dragOverIndex > dragIndex);
 
 	function onDrop(index: number) {
 		if (dragIndex === null || dragIndex === index) return;
@@ -236,42 +353,17 @@
 		dragOverIndex = null;
 	}
 
-	/* ---------------- overlay editor ---------------- */
-
-	let overlayOpen = $state(false);
-	let overlayBlockId = $state<string | null>(null);
-	const overlayBlock = $derived(blocks.find((b) => b.id === overlayBlockId) ?? null);
-
-	function openOverlay(id: string) {
-		overlayBlockId = id;
-		overlayOpen = true;
-	}
-
 	/* ---------------- media picker ---------------- */
 
 	let pickerOpen = $state(false);
 	let pickerBlockId = $state<string | null>(null);
 	let pickerTarget = $state('block');
-	let reopenOverlayAfterPick = $state(false);
 
 	function onPickImage(blockId: string, target = 'block') {
 		pickerBlockId = blockId;
 		pickerTarget = target;
-		// Close the overlay first — opening the picker on top of it would stack two
-		// dialog overlays and darken the screen twice over.
-		if (overlayOpen) {
-			overlayOpen = false;
-			reopenOverlayAfterPick = true;
-		}
 		pickerOpen = true;
 	}
-
-	$effect(() => {
-		if (!pickerOpen && reopenOverlayAfterPick) {
-			reopenOverlayAfterPick = false;
-			overlayOpen = true;
-		}
-	});
 
 	function onImageSelected(media: Media) {
 		blocks = blocks.map((block) => {
@@ -283,18 +375,20 @@
 				const itemId = pickerTarget.slice('card:'.length);
 				return {
 					...block,
-					cards: block.cards.map((item) => item.id === itemId
-						? { ...item, imageUrl: media.url, imageAlt: media.altText ?? item.imageAlt }
-						: item)
+					cards: block.cards.map((item) =>
+						item.id === itemId
+							? { ...item, imageUrl: media.url, imageAlt: media.altText ?? item.imageAlt }
+							: item
+					)
 				};
 			}
 			if (pickerTarget.startsWith('gallery:')) {
 				const itemId = pickerTarget.slice('gallery:'.length);
 				return {
 					...block,
-					gallery: block.gallery.map((item) => item.id === itemId
-						? { ...item, url: media.url, alt: media.altText ?? item.alt }
-						: item)
+					gallery: block.gallery.map((item) =>
+						item.id === itemId ? { ...item, url: media.url, alt: media.altText ?? item.alt } : item
+					)
 				};
 			}
 			return { ...block, url: media.url, alt: media.altText ?? block.alt };
@@ -305,25 +399,37 @@
 
 	let inserterOpen = $state(false);
 	let inserterIndex = $state<number | null>(null);
+	let inserterReplaceId = $state<string | null>(null);
 	let inserterQuery = $state('');
 
-	function openInserter(index: number | null) {
+	function openInserter(index: number | null, replaceId: string | null = null) {
 		inserterIndex = index;
+		inserterReplaceId = replaceId;
 		inserterQuery = '';
 		inserterOpen = true;
+	}
+
+	/** "/" in an empty paragraph swaps that paragraph for whatever gets picked. */
+	function onSlash(blockId: string) {
+		openInserter(indexOf(blockId), blockId);
 	}
 
 	function chooseBlock(type: BlockType) {
 		if ((!enabled && pageBuilderTypes.has(type)) || (!formBuilderEnabled && type === 'form')) return;
 		inserterOpen = false;
-		insertBlock(type, inserterIndex, 200);
+		insertBlock(type, inserterIndex, inserterReplaceId);
 	}
 
 	function choosePattern(patternId: PageBuilderPatternId) {
 		if (!enabled) return;
 		const patternBlocks = createPatternBlocks(patternId);
-		const at = inserterIndex ?? blocks.length;
-		blocks = [...blocks.slice(0, at), ...patternBlocks, ...blocks.slice(at)];
+		const replaceAt = inserterReplaceId ? indexOf(inserterReplaceId) : -1;
+		if (replaceAt >= 0) {
+			blocks = [...blocks.slice(0, replaceAt), ...patternBlocks, ...blocks.slice(replaceAt + 1)];
+		} else {
+			const at = inserterIndex ?? blocks.length;
+			blocks = [...blocks.slice(0, at), ...patternBlocks, ...blocks.slice(at)];
+		}
 		selectedId = patternBlocks[0]?.id ?? null;
 		inserterOpen = false;
 	}
@@ -339,403 +445,546 @@
 		})).filter((category) => category.types.length > 0)
 	);
 	const filteredPatterns = $derived(
-		enabled ? PAGE_BUILDER_PATTERNS.filter((pattern) => {
-			const query = inserterQuery.trim().toLowerCase();
-			return !query || `${pattern.name} ${pattern.description}`.toLowerCase().includes(query);
-		}) : []
+		enabled
+			? PAGE_BUILDER_PATTERNS.filter((pattern) => {
+					const query = inserterQuery.trim().toLowerCase();
+					return !query || `${pattern.name} ${pattern.description}`.toLowerCase().includes(query);
+				})
+			: []
 	);
 
-	/* ---------------- canvas helpers ---------------- */
+	/* ---------------- inline format toolbar ---------------- */
 
-	/** Renders one block through the same markdown pipeline the published site uses. */
-	function blockPreviewHtml(block: Block): string {
-		return renderMarkdown(blocksToMarkdown([block]));
+	// Content is stored as Markdown, so "bold" wraps the selection in ** rather
+	// than producing markup the storage layer would have to strip again.
+	let formatBar = $state<{ top: number; left: number } | null>(null);
+	let linkOpen = $state(false);
+	let linkUrl = $state('');
+	let savedRange: Range | null = null;
+	let savedEditable: HTMLElement | null = null;
+
+	function onSelectionChange() {
+		if (mode !== 'visual' || linkOpen) return;
+		const host = selectionEditable();
+		if (!host || !canvasEl?.contains(host)) {
+			formatBar = null;
+			return;
+		}
+		const selection = window.getSelection();
+		const rect = selection?.getRangeAt(0).getBoundingClientRect();
+		if (!rect || (rect.width === 0 && rect.height === 0)) {
+			formatBar = null;
+			return;
+		}
+		savedRange = selection!.getRangeAt(0).cloneRange();
+		savedEditable = host;
+		formatBar = { top: rect.top - 8, left: rect.left + rect.width / 2 };
 	}
 
-	function autoresize(node: HTMLTextAreaElement) {
-		const resize = () => {
-			node.style.height = 'auto';
-			node.style.height = `${node.scrollHeight}px`;
-		};
-		resize();
-		node.addEventListener('input', resize);
-		return {
-			destroy: () => node.removeEventListener('input', resize)
-		};
+	/** Focusing the link input drops the selection; put it back before writing. */
+	function restoreSelection() {
+		if (!savedRange || !savedEditable) return false;
+		savedEditable.focus();
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(savedRange);
+		return true;
+	}
+
+	function format(kind: 'bold' | 'italic' | 'code') {
+		if (!restoreSelection()) return;
+		applyInlineFormat(kind);
+		formatBar = null;
+	}
+
+	function submitLink() {
+		if (restoreSelection()) applyInlineLink(linkUrl.trim());
+		linkOpen = false;
+		linkUrl = '';
+		formatBar = null;
 	}
 </script>
 
-<svelte:window onkeydown={onEditorKeydown} />
+<svelte:window onkeydown={onWindowKeydown} />
+<svelte:document onselectionchange={onSelectionChange} />
 
-<div class="space-y-3">
-	{#if !enabled}
-		<div class="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 text-sm">
-			<p class="font-semibold text-foreground">Page Builder belum aktif</p>
-			<p class="mt-1 text-muted-foreground">
-				Editor blok inti tetap tersedia. Aktifkan plugin Page Builder untuk membuka Hero, Cards,
-				Gallery, Statistik, FAQ, Spacer, dan pola halaman siap pakai.
-			</p>
-			<a href="/sites/{siteId}/plugins" class="mt-2 inline-flex font-medium text-primary hover:underline">Kelola plugin</a>
-		</div>
-	{/if}
-	<div class="flex flex-wrap items-center justify-between gap-2 border-b border-border">
-		<div class="flex gap-1">
+<!-- What actually submits with the form, whichever mode is active. -->
+<textarea {name} value={markdown} class="hidden" readonly tabindex="-1"></textarea>
+
+<div
+	class={cn(
+		'flex flex-col overflow-hidden border border-border bg-muted/40',
+		fullscreen
+			? 'fixed inset-0 z-50 h-dvh rounded-none'
+			: 'h-[calc(100dvh-7rem)] min-h-144 rounded-xl shadow-sm'
+	)}
+>
+	<!-- ------------------------------------------------------------ top bar -->
+	<header class="flex flex-wrap items-center gap-2 border-b border-border bg-background px-2 py-2">
+		{#if backHref}
+			<Button type="button" variant="ghost" size="sm" href={backHref}>
+				<ArrowLeft class="size-4" />
+				<span class="hidden sm:inline">{backLabel}</span>
+			</Button>
+			<span class="mx-0.5 hidden h-5 w-px bg-border sm:block"></span>
+		{/if}
+
+		<Button type="button" size="sm" onclick={() => openInserter(null)} disabled={mode !== 'visual'}>
+			<Plus class="size-4" /> <span class="hidden sm:inline">Blok</span>
+		</Button>
+
+		<div class="flex rounded-md border border-border p-0.5">
 			<button
 				type="button"
-				class={cn(
-					'border-b-2 px-3 py-2 text-sm font-medium',
-					mode === 'visual' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-				)}
-				onclick={switchToVisual}
+				class="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+				disabled={mode !== 'visual' || historyIndex <= 0}
+				onclick={() => restoreHistory(historyIndex - 1)}
+				title="Urungkan (Ctrl/Cmd+Z)"
+				aria-label="Urungkan"
 			>
-				Visual
+				<Undo2 class="size-4" />
 			</button>
 			<button
 				type="button"
-				class={cn(
-					'border-b-2 px-3 py-2 text-sm font-medium',
-					mode === 'preview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-				)}
-				onclick={() => (mode = 'preview')}
+				class="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+				disabled={mode !== 'visual' || historyIndex >= history.length - 1}
+				onclick={() => restoreHistory(historyIndex + 1)}
+				title="Ulangi (Ctrl/Cmd+Shift+Z)"
+				aria-label="Ulangi"
 			>
-				Pratinjau
-			</button>
-			<button
-				type="button"
-				class={cn(
-					'border-b-2 px-3 py-2 text-sm font-medium',
-					mode === 'code' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-				)}
-				onclick={() => (mode = 'code')}
-			>
-				Kode
+				<Redo2 class="size-4" />
 			</button>
 		</div>
 
-		<div class="mb-1 flex flex-wrap items-center justify-end gap-1.5">
-			{#if mode === 'visual'}
-				<div class="flex rounded-md border border-border bg-background p-0.5">
-					<button type="button" class="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30" disabled={historyIndex <= 0} onclick={() => restoreHistory(historyIndex - 1)} title="Urungkan (Ctrl/Cmd+Z)" aria-label="Urungkan">
-						<Undo2 class="size-3.5" />
+		<button
+			type="button"
+			class={cn(
+				'rounded-md border p-1.5 transition-colors',
+				structureOpen ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
+			)}
+			onclick={() => (structureOpen = !structureOpen)}
+			title="Struktur dokumen"
+			aria-label="Struktur dokumen"
+		>
+			<PanelLeft class="size-4" />
+		</button>
+
+		<div class="mx-auto flex items-center gap-2">
+			<div class="flex rounded-md bg-muted p-0.5 text-sm">
+				{#each [{ id: 'visual', label: 'Visual' }, { id: 'preview', label: 'Pratinjau' }, { id: 'code', label: 'Kode' }] as tab (tab.id)}
+					<button
+						type="button"
+						class={cn(
+							'rounded px-3 py-1 font-medium transition-colors',
+							mode === tab.id ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground'
+						)}
+						onclick={() => (tab.id === 'visual' ? switchToVisual() : (mode = tab.id as typeof mode))}
+					>
+						{tab.label}
 					</button>
-					<button type="button" class="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30" disabled={historyIndex < 0 || historyIndex >= history.length - 1} onclick={() => restoreHistory(historyIndex + 1)} title="Ulangi (Ctrl/Cmd+Shift+Z)" aria-label="Ulangi">
-						<Redo2 class="size-3.5" />
-					</button>
-				</div>
-			{/if}
-			<span class="mr-1 text-xs text-muted-foreground">{blocks.length} blok · {wordCount} kata</span>
-			{#if mode === 'visual'}
-				<button
-					type="button"
-					class={cn(
-						'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-						listViewOpen ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
-					)}
-					onclick={() => (listViewOpen = !listViewOpen)}
-					title="Tampilkan struktur blok"
-				>
-					<PanelLeft class="size-3.5" /> Struktur
-				</button>
-				<button
-					type="button"
-					class={cn(
-						'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-						splitPreview ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
-					)}
-					onclick={() => (splitPreview = !splitPreview)}
-					title="Tampilkan pratinjau langsung berdampingan"
-				>
-					<Columns2 class="size-3.5" /> Pratinjau langsung
-				</button>
-			{/if}
-			{#if mode === 'preview' || splitPreview}
-				<div class="flex rounded-md border border-border bg-background p-0.5" aria-label="Ukuran pratinjau">
+				{/each}
+			</div>
+
+			{#if mode !== 'code'}
+				<div class="hidden rounded-md border border-border p-0.5 sm:flex" aria-label="Lebar pratinjau">
 					{#each PREVIEW_DEVICES as device (device.id)}
 						{@const DeviceIcon = device.icon}
 						<button
 							type="button"
-							class={cn('rounded p-1.5 text-muted-foreground hover:bg-muted', previewDevice === device.id && 'bg-muted text-primary')}
+							class={cn(
+								'rounded p-1.5 text-muted-foreground hover:bg-muted',
+								previewDevice === device.id && 'bg-muted text-primary'
+							)}
 							onclick={() => (previewDevice = device.id)}
 							title={device.label}
 							aria-label={device.label}
 						>
-							<DeviceIcon class="size-3.5" />
+							<DeviceIcon class="size-4" />
 						</button>
 					{/each}
 				</div>
 			{/if}
 		</div>
-	</div>
 
-	<!-- What actually submits with the form, whichever tab is active. -->
-	<textarea {name} value={markdown} class="hidden" readonly tabindex="-1"></textarea>
+		<span class="hidden text-xs text-muted-foreground lg:inline">{blocks.length} blok · {wordCount} kata</span>
 
-	{#if mode === 'code'}
-		<Textarea bind:value rows={20} class="font-mono text-sm" placeholder="Tulis konten dalam Markdown..." />
-	{:else if mode === 'preview'}
-		<div class="min-h-96 overflow-x-auto rounded-lg border border-border bg-muted/40 p-3 sm:p-6">
-			<!-- Links are visual-only inside the editor so an accidental click cannot
-			     navigate away with unsaved changes. -->
-			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-			<div
-				class={cn('markdown-preview mx-auto min-h-80 bg-background p-6 shadow-sm transition-[max-width]', previewWidth)}
-				onclick={preventPreviewNavigation}
+		<button
+			type="button"
+			class="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted"
+			onclick={() => (fullscreen = !fullscreen)}
+			title={fullscreen ? 'Keluar layar penuh (Esc)' : 'Layar penuh (Ctrl/Cmd+Shift+F)'}
+			aria-label={fullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+		>
+			{#if fullscreen}<Minimize2 class="size-4" />{:else}<Maximize2 class="size-4" />{/if}
+		</button>
+
+		<button
+			type="button"
+			class={cn(
+				'rounded-md border p-1.5 transition-colors',
+				inspectorOpen ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
+			)}
+			onclick={() => (inspectorOpen = !inspectorOpen)}
+			title="Pengaturan"
+			aria-label="Pengaturan"
+		>
+			<PanelRight class="size-4" />
+		</button>
+
+		{#if actions}
+			<span class="mx-0.5 hidden h-5 w-px bg-border sm:block"></span>
+			{@render actions()}
+		{/if}
+	</header>
+
+	<div class="relative flex min-h-0 flex-1">
+		<!-- --------------------------------------------------------- structure -->
+		{#if structureOpen}
+			<aside
+				class="w-56 shrink-0 overflow-y-auto border-r border-border bg-background p-2 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:shadow-xl"
 			>
-				{@html renderMarkdown(markdown) || '<p class="text-sm">Belum ada konten.</p>'}
-			</div>
-		</div>
-	{:else}
-		<div class={cn(
-			'grid gap-4',
-			listViewOpen && splitPreview && 'lg:grid-cols-[220px_minmax(0,1fr)_minmax(280px,0.8fr)]',
-			listViewOpen && !splitPreview && 'lg:grid-cols-[220px_minmax(0,1fr)]',
-			!listViewOpen && splitPreview && 'lg:grid-cols-2'
-		)}>
-			{#if listViewOpen}
-				<aside class="rounded-lg border border-border bg-muted/20 p-2 lg:sticky lg:top-4 lg:max-h-[70vh] lg:self-start lg:overflow-y-auto">
-					<div class="mb-2 flex items-center justify-between px-2 py-1">
-						<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Struktur</p>
-						<span class="text-[11px] text-muted-foreground">{blocks.length}</span>
-					</div>
-					<div class="space-y-1">
-						{#each blocks as outlineBlock, outlineIndex (outlineBlock.id)}
-							{@const OutlineIcon = BLOCK_ICONS[outlineBlock.type]}
-							<button
-								type="button"
-								class={cn(
-									'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-muted',
-									selectedId === outlineBlock.id && 'bg-primary/10 text-primary'
-								)}
-								onclick={() => (selectedId = outlineBlock.id)}
-							>
-								<OutlineIcon class="size-3.5 shrink-0" />
-								<span class="min-w-0 flex-1 truncate">{outlineBlock.text || outlineBlock.formTitle || BLOCK_TYPE_LABELS[outlineBlock.type]}</span>
-								<span class="text-[10px] text-muted-foreground">{outlineIndex + 1}</span>
-							</button>
-						{/each}
-					</div>
-				</aside>
-			{/if}
-			<div class="space-y-1">
-				{#each blocks as block, index (block.id)}
-					{@const Icon = BLOCK_ICONS[block.type]}
-					{@const isOverlayType = OVERLAY_EDITED_TYPES.includes(block.type)}
-
-					<!-- Insert-between affordance, like Gutenberg's hover inserter. -->
-					<div class="group/gap relative h-2">
+				<div class="mb-2 flex items-center justify-between px-2 py-1">
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Struktur</p>
+					<span class="text-[11px] text-muted-foreground">{blocks.length}</span>
+				</div>
+				<div class="space-y-0.5">
+					{#each blocks as outlineBlock, outlineIndex (outlineBlock.id)}
+						{@const OutlineIcon = BLOCK_ICONS[outlineBlock.type]}
 						<button
 							type="button"
-							class="absolute left-1/2 top-1/2 flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 transition-opacity group-hover/gap:opacity-100"
-							onclick={() => openInserter(index)}
-							title="Sisipkan blok di sini"
+							class={cn(
+								'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-muted',
+								selectedId === outlineBlock.id && 'bg-primary/10 text-primary'
+							)}
+							onclick={() => {
+								selectBlock(outlineBlock.id);
+								canvasEl
+									?.querySelector(`[data-block-id="${outlineBlock.id}"]`)
+									?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+							}}
 						>
-							<Plus class="size-3" />
+							<OutlineIcon class="size-3.5 shrink-0" />
+							<span class="min-w-0 flex-1 truncate">
+								{outlineBlock.text || outlineBlock.formTitle || BLOCK_TYPE_LABELS[outlineBlock.type]}
+							</span>
+							<span class="text-[10px] text-muted-foreground">{outlineIndex + 1}</span>
+						</button>
+					{/each}
+				</div>
+			</aside>
+		{/if}
+
+		<!-- ------------------------------------------------------------ canvas -->
+		<div class="min-w-0 flex-1 overflow-y-auto px-3 py-6 sm:px-6" bind:this={canvasEl}>
+			<div
+				class="mx-auto w-full rounded-xl border border-border bg-background px-5 py-8 shadow-sm transition-[max-width] duration-200 sm:px-10 sm:py-12"
+				style="max-width: {canvasWidth}"
+			>
+				{#if documentHeader}
+					<div class="mb-8 border-b border-dashed border-border pb-6">
+						{@render documentHeader()}
+					</div>
+				{/if}
+
+				{#if !enabled && mode === 'visual'}
+					<div class="mb-6 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 text-sm">
+						<p class="font-semibold text-foreground">Page Builder belum aktif</p>
+						<p class="mt-1 text-muted-foreground">
+							Editor blok inti tetap tersedia. Aktifkan plugin Page Builder untuk membuka Hero, Cards,
+							Gallery, Statistik, FAQ, Spacer, dan pola halaman siap pakai.
+						</p>
+						<a href="/sites/{siteId}/plugins" class="mt-2 inline-flex font-medium text-primary hover:underline">
+							Kelola plugin
+						</a>
+					</div>
+				{/if}
+
+				{#if mode === 'code'}
+					<Textarea bind:value rows={24} class="font-mono text-sm" placeholder="Tulis konten dalam Markdown..." />
+				{:else if mode === 'preview'}
+					<!-- Links are inert in the editor so a stray click cannot navigate
+					     away with unsaved changes. -->
+					<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+					<div class="cms-content" onclick={preventPreviewNavigation}>
+						{@html renderMarkdown(markdown) || '<p>Belum ada konten.</p>'}
+					</div>
+				{:else}
+					<div class="cms-content">
+						{#each blocks as block, index (block.id)}
+							{@const Icon = BLOCK_ICONS[block.type]}
+							<!-- Click-to-select is a pointer shortcut; every action it implies is
+							     also on the block toolbar and the structure panel, so the wrapper
+							     itself stays out of the accessibility tree. -->
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
+							<div
+								role="group"
+								data-block-id={block.id}
+								draggable={handleArmedId === block.id}
+								ondragstart={() => (dragIndex = index)}
+								ondragover={(event: DragEvent) => {
+									event.preventDefault();
+									dragOverIndex = index;
+								}}
+								ondragleave={() => (dragOverIndex = null)}
+								ondrop={(event: DragEvent) => {
+									event.preventDefault();
+									onDrop(index);
+								}}
+								ondragend={() => {
+									dragIndex = null;
+									dragOverIndex = null;
+									handleArmedId = null;
+								}}
+								onpointerdown={() => selectBlock(block.id)}
+								onfocusin={() => selectBlock(block.id)}
+								class={cn(
+									'cms-block my-6',
+									selectedId === block.id && 'is-selected',
+									dragIndex === index && 'is-dragging',
+									dragOverIndex === index && dragIndex !== index && (dropsAfter ? 'is-drop-after' : 'is-drop-before')
+								)}
+							>
+								{#if selectedId === block.id}
+									<div class="absolute -top-3.5 left-0 z-10 flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shadow-sm">
+										<button
+											type="button"
+											class="cursor-grab rounded p-1 text-muted-foreground hover:bg-muted"
+											onpointerdown={() => (handleArmedId = block.id)}
+											onpointerup={() => (handleArmedId = null)}
+											title="Seret untuk memindahkan"
+											aria-label="Seret untuk memindahkan"
+										>
+											<GripVertical class="size-3.5" />
+										</button>
+										<span class="flex items-center gap-1 pr-1 text-[11px] font-medium text-muted-foreground">
+											<Icon class="size-3.5" />
+											{BLOCK_TYPE_LABELS[block.type]}
+										</span>
+										<button
+											type="button"
+											class="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+											disabled={index === 0}
+											onclick={() => moveBlock(index, -1)}
+											title="Pindah ke atas"
+											aria-label="Pindah ke atas"
+										>
+											<ArrowUp class="size-3.5" />
+										</button>
+										<button
+											type="button"
+											class="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+											disabled={index === blocks.length - 1}
+											onclick={() => moveBlock(index, 1)}
+											title="Pindah ke bawah"
+											aria-label="Pindah ke bawah"
+										>
+											<ArrowDown class="size-3.5" />
+										</button>
+										<button
+											type="button"
+											class="rounded p-1 text-muted-foreground hover:bg-muted"
+											onclick={() => duplicate(index)}
+											title="Duplikat blok"
+											aria-label="Duplikat blok"
+										>
+											<Copy class="size-3.5" />
+										</button>
+										<button
+											type="button"
+											class="rounded p-1 text-muted-foreground hover:bg-muted"
+											onclick={() => {
+												inspectorOpen = true;
+												inspectorTab = 'block';
+											}}
+											title="Pengaturan blok"
+											aria-label="Pengaturan blok"
+										>
+											<Settings2 class="size-3.5" />
+										</button>
+										<button
+											type="button"
+											class="rounded p-1 text-destructive hover:bg-destructive/10"
+											onclick={() => removeBlock(block.id)}
+											title="Hapus blok"
+											aria-label="Hapus blok"
+										>
+											<Trash2 class="size-3.5" />
+										</button>
+									</div>
+								{/if}
+
+								<BlockCanvas
+									{block}
+									{forms}
+									{onPickImage}
+									onOpenSettings={() => {
+										inspectorOpen = true;
+										inspectorTab = 'block';
+									}}
+									onEnter={appendParagraph}
+									onEmptyBackspace={onBlockEmptyBackspace}
+									{onSlash}
+								/>
+							</div>
+
+							<!-- Insert-between affordance, revealed on hover like Gutenberg's. -->
+							<div class="group/gap relative h-3">
+								<button
+									type="button"
+									class="absolute left-1/2 top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow transition-opacity group-hover/gap:opacity-100 focus-visible:opacity-100"
+									onclick={() => openInserter(index + 1)}
+									title="Sisipkan blok di sini"
+									aria-label="Sisipkan blok di sini"
+								>
+									<Plus class="size-3.5" />
+								</button>
+							</div>
+						{/each}
+
+						<button
+							type="button"
+							class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+							onclick={() => openInserter(null)}
+						>
+							<Plus class="size-4" /> Tambah blok
 						</button>
 					</div>
+				{/if}
+			</div>
+		</div>
 
-					<!-- Click-to-select and double-click-to-edit are mouse shortcuts, mirroring
-					     Gutenberg. Keyboard and screen-reader users get the same actions from the
-					     explicit toolbar buttons above, so the div stays non-interactive for AT. -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
-					<div
-						role="group"
-						draggable={handleArmedId === block.id}
-						ondragstart={() => (dragIndex = index)}
-						ondragover={(event: DragEvent) => {
-							event.preventDefault();
-							dragOverIndex = index;
-						}}
-						ondragleave={() => (dragOverIndex = null)}
-						ondrop={(event: DragEvent) => {
-							event.preventDefault();
-							onDrop(index);
-						}}
-						ondragend={() => {
-							dragIndex = null;
-							dragOverIndex = null;
-							handleArmedId = null;
-						}}
-						onclick={(event) => onCanvasBlockClick(event, block.id)}
-						ondblclick={() => openOverlay(block.id)}
+		<!--
+			Inspector — always mounted, only ever hidden.
+
+			The document panel holds the route's real form fields (status,
+			taxonomies, excerpt…). Unmounting it on a tab switch or a panel close
+			would drop those fields from the form, and the next save would submit
+			the document as if the author had cleared every one of them.
+		-->
+		<aside
+			class={cn(
+				'w-80 shrink-0 flex-col overflow-hidden border-l border-border bg-background',
+				'max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30 max-lg:shadow-xl',
+				inspectorOpen ? 'flex' : 'hidden'
+			)}
+		>
+			<div class="flex items-center gap-1 border-b border-border px-2 py-1.5">
+				{#if documentPanel}
+					<button
+						type="button"
 						class={cn(
-							'relative rounded-md border bg-background p-3 transition-colors',
-							selectedId === block.id ? 'border-primary ring-1 ring-primary/30' : 'border-transparent hover:border-border',
-							dragOverIndex === index && dragIndex !== index && 'border-primary border-dashed',
-							dragIndex === index && 'opacity-40'
+							'flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors',
+							activeTab === 'document' ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted/60'
 						)}
+						onclick={() => (inspectorTab = 'document')}
 					>
-						<div class="mb-1.5 flex items-center gap-1.5">
-							<button
-								type="button"
-								class="cursor-grab rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
-								onmousedown={() => (handleArmedId = block.id)}
-								onmouseup={() => (handleArmedId = null)}
-								title="Seret untuk memindahkan"
-								aria-label="Seret untuk memindahkan"
-							>
-								<GripVertical class="size-3.5" />
-							</button>
-							<Icon class="size-3.5 text-muted-foreground" />
-							<span class="text-xs font-medium text-muted-foreground">{BLOCK_TYPE_LABELS[block.type]}</span>
-
-							<div class="ml-auto flex items-center gap-0.5">
-								<button
-									type="button"
-									class="rounded p-1 text-muted-foreground hover:bg-muted"
-									onclick={() => openOverlay(block.id)}
-									title="Edit di jendela (atau klik dua kali blok)"
-								>
-									<Pencil class="size-3.5" />
-								</button>
-								<button
-									type="button"
-									class="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
-									disabled={index === 0}
-									onclick={() => moveBlock(index, -1)}
-									title="Pindah ke atas"
-								>
-									<ArrowUp class="size-3.5" />
-								</button>
-								<button
-									type="button"
-									class="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
-									disabled={index === blocks.length - 1}
-									onclick={() => moveBlock(index, 1)}
-									title="Pindah ke bawah"
-								>
-									<ArrowDown class="size-3.5" />
-								</button>
-								<button
-									type="button"
-									class="rounded p-1 text-muted-foreground hover:bg-muted"
-									onclick={() => duplicate(index)}
-									title="Duplikat blok"
-								>
-									<Copy class="size-3.5" />
-								</button>
-								<button
-									type="button"
-									class="rounded p-1 text-destructive hover:bg-destructive/10"
-									onclick={() => removeBlock(block.id)}
-									title="Hapus blok"
-								>
-									<Trash2 class="size-3.5" />
-								</button>
-							</div>
-						</div>
-
-						{#if block.type === 'heading'}
-							<input
-								bind:value={block.text}
-								placeholder="Judul bagian..."
-								class={cn(
-									'w-full border-none bg-transparent font-bold outline-none placeholder:text-muted-foreground/60',
-									block.level === 2 ? 'text-2xl' : block.level === 3 ? 'text-xl' : 'text-lg'
-								)}
-							/>
-						{:else if block.type === 'paragraph'}
-							<textarea
-								bind:value={block.text}
-								use:autoresize
-								rows={2}
-								placeholder="Tulis paragraf, atau klik dua kali untuk jendela editor..."
-								class="w-full resize-none border-none bg-transparent leading-relaxed outline-none placeholder:text-muted-foreground/60"
-							></textarea>
-						{:else if block.type === 'quote'}
-							<textarea
-								bind:value={block.text}
-								use:autoresize
-								rows={2}
-								placeholder="Tulis kutipan..."
-								class="w-full resize-none border-l-4 border-border bg-transparent pl-3 italic outline-none placeholder:text-muted-foreground/60"
-							></textarea>
-						{:else if block.type === 'code'}
-							<textarea
-								bind:value={block.text}
-								use:autoresize
-								rows={3}
-								placeholder="Tulis kode..."
-								class="w-full resize-none rounded bg-muted/50 p-2 font-mono text-sm outline-none"
-							></textarea>
-						{:else if block.type === 'list'}
-							<div class="space-y-1">
-								{#each block.items as _, itemIndex (itemIndex)}
-									<div class="flex items-center gap-2">
-										<span class="w-5 text-right text-sm text-muted-foreground">
-											{block.ordered ? `${itemIndex + 1}.` : '•'}
-										</span>
-										<input
-											bind:value={block.items[itemIndex]}
-											placeholder="Item daftar..."
-											class="w-full border-none bg-transparent outline-none placeholder:text-muted-foreground/60"
-										/>
-									</div>
-								{/each}
-								<button
-									type="button"
-									class="ml-7 text-xs text-primary hover:underline"
-									onclick={() => (block.items = [...block.items, ''])}
-								>
-									+ Tambah item
-								</button>
-							</div>
-						{:else if block.type === 'divider'}
-							<hr class="border-border" />
-						{:else if isOverlayType}
-							<!-- Rendered through the real markdown pipeline, so the canvas shows
-							     what the published page will show. Double-click to edit. -->
-							{@const html = blockPreviewHtml(block)}
-							{#if html}
-								<div class="markdown-preview cursor-pointer">{@html html}</div>
-							{:else}
-								<button
-									type="button"
-									class="flex w-full flex-col items-center gap-1.5 rounded-md border-2 border-dashed border-border py-6 text-muted-foreground hover:border-primary hover:text-primary"
-									onclick={() => openOverlay(block.id)}
-								>
-									<Icon class="size-6" />
-									<span class="text-xs">Atur {BLOCK_TYPE_LABELS[block.type]}</span>
-								</button>
-							{/if}
-						{/if}
-					</div>
-				{/each}
-
-				<div class="pt-2">
-					<Button type="button" variant="outline" onclick={() => openInserter(null)}>
-						<Plus /> Tambah Blok
-					</Button>
-				</div>
+						{documentLabel}
+					</button>
+				{/if}
+				<button
+					type="button"
+					class={cn(
+						'flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors',
+						activeTab === 'block' ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted/60'
+					)}
+					onclick={() => (inspectorTab = 'block')}
+				>
+					Blok
+				</button>
+				<button
+					type="button"
+					class="rounded p-1.5 text-muted-foreground hover:bg-muted"
+					onclick={() => (inspectorOpen = false)}
+					title="Tutup panel"
+					aria-label="Tutup panel"
+				>
+					<X class="size-4" />
+				</button>
 			</div>
 
-			{#if splitPreview}
-				<div class="lg:sticky lg:top-4 lg:self-start">
-					<p class="mb-1.5 text-xs font-medium text-muted-foreground">Pratinjau langsung</p>
-					<div class="max-h-[70vh] overflow-auto rounded-lg border border-border bg-muted/40 p-2">
-						<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-						<div
-							class={cn('markdown-preview mx-auto bg-background p-5 transition-[max-width]', previewWidth)}
-							onclick={preventPreviewNavigation}
-						>
-							{@html renderMarkdown(markdown) || '<p class="text-sm">Belum ada konten.</p>'}
-						</div>
+			<div class="min-h-0 flex-1 overflow-y-auto p-4">
+				{#if documentPanel}
+					<div class={activeTab === 'document' ? undefined : 'hidden'}>
+						{@render documentPanel()}
 					</div>
-				</div>
-			{/if}
-		</div>
-	{/if}
+				{/if}
+				{#if activeTab === 'block'}
+					{#if selectedBlock}
+						<p class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+							{BLOCK_TYPE_LABELS[selectedBlock.type]}
+						</p>
+						<BlockFields block={selectedBlock} {onPickImage} {forms} />
+					{:else}
+						<p class="text-sm text-muted-foreground">Pilih sebuah blok untuk melihat pengaturannya.</p>
+					{/if}
+				{/if}
+			</div>
+		</aside>
+	</div>
 </div>
 
-<!-- Block inserter -->
+<!-- ------------------------------------------------- inline format toolbar -->
+{#if formatBar && mode === 'visual'}
+	<!-- Mousedown is swallowed so the text selection this toolbar acts on survives the click. -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed z-60 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shadow-md"
+		style="top: {formatBar.top}px; left: {formatBar.left}px"
+		onmousedown={(event) => event.preventDefault()}
+	>
+		{#if linkOpen}
+			<Input
+				bind:value={linkUrl}
+				placeholder="https://…"
+				class="h-7 w-52 text-xs"
+				autofocus
+				onkeydown={(event: KeyboardEvent) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						submitLink();
+					}
+					if (event.key === 'Escape') linkOpen = false;
+				}}
+			/>
+			<button type="button" class="rounded px-2 py-1 text-xs font-medium text-primary" onclick={submitLink}>
+				Terapkan
+			</button>
+		{:else}
+			<button type="button" class="rounded p-1.5 hover:bg-muted" onclick={() => format('bold')} title="Tebal" aria-label="Tebal">
+				<Bold class="size-3.5" />
+			</button>
+			<button type="button" class="rounded p-1.5 hover:bg-muted" onclick={() => format('italic')} title="Miring" aria-label="Miring">
+				<Italic class="size-3.5" />
+			</button>
+			<button type="button" class="rounded p-1.5 hover:bg-muted" onclick={() => format('code')} title="Kode" aria-label="Kode">
+				<Code class="size-3.5" />
+			</button>
+			<button
+				type="button"
+				class="rounded p-1.5 hover:bg-muted"
+				onclick={() => {
+					linkUrl = '';
+					linkOpen = true;
+				}}
+				title="Tautan"
+				aria-label="Tautan"
+			>
+				<Link2 class="size-3.5" />
+			</button>
+		{/if}
+	</div>
+{/if}
+
+<!-- ------------------------------------------------------------- inserter -->
 <Dialog.Root bind:open={inserterOpen}>
-	<Dialog.Content class="max-h-[85vh] max-w-2xl overflow-y-auto">
+	<Dialog.Content class="max-h-[85vh] max-w-2xl">
 		<Dialog.Header>
 			<Dialog.Title>Tambah Blok</Dialog.Title>
 		</Dialog.Header>
 
 		<div class="relative">
 			<Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-			<Input bind:value={inserterQuery} placeholder="Cari blok..." class="pl-8" />
+			<Input bind:value={inserterQuery} placeholder="Cari blok atau pola..." class="pl-8" />
 		</div>
 
 		<div class="space-y-4">
@@ -785,347 +1034,4 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Per-block overlay editor (double-click a block) -->
-<Dialog.Root bind:open={overlayOpen}>
-	{#if overlayBlock}
-		<Dialog.Content class="max-w-2xl">
-			<Dialog.Header>
-				<Dialog.Title>Edit {BLOCK_TYPE_LABELS[overlayBlock.type]}</Dialog.Title>
-			</Dialog.Header>
-
-			<div class="space-y-4">
-				<BlockFields block={overlayBlock} {onPickImage} {forms} />
-			</div>
-
-			<div class="flex justify-end gap-2 border-t border-border pt-3">
-				<Button type="button" variant="outline" onclick={() => (overlayOpen = false)}>Tutup</Button>
-			</div>
-		</Dialog.Content>
-	{/if}
-</Dialog.Root>
-
 <MediaPicker {siteId} bind:open={pickerOpen} onSelect={onImageSelected} />
-
-<style>
-	.markdown-preview {
-		container-type: inline-size;
-	}
-
-	.markdown-preview :global(h1),
-	.markdown-preview :global(h2),
-	.markdown-preview :global(h3) {
-		font-weight: 600;
-		margin-top: 0.75em;
-		margin-bottom: 0.35em;
-		line-height: 1.25;
-	}
-	.markdown-preview :global(h1) {
-		font-size: 1.75em;
-	}
-	.markdown-preview :global(h2) {
-		font-size: 1.4em;
-	}
-	.markdown-preview :global(h3) {
-		font-size: 1.15em;
-	}
-	.markdown-preview :global(p) {
-		margin-bottom: 0.6em;
-		line-height: 1.65;
-	}
-	.markdown-preview :global(ul),
-	.markdown-preview :global(ol) {
-		margin-bottom: 0.6em;
-		padding-left: 1.4em;
-	}
-	.markdown-preview :global(ul) {
-		list-style: disc;
-	}
-	.markdown-preview :global(ol) {
-		list-style: decimal;
-	}
-	.markdown-preview :global(a) {
-		color: var(--primary);
-		text-decoration: underline;
-	}
-	.markdown-preview :global(code) {
-		background: var(--muted);
-		border-radius: 0.25rem;
-		padding: 0.1em 0.35em;
-		font-size: 0.85em;
-	}
-	.markdown-preview :global(pre) {
-		background: var(--muted);
-		border-radius: 0.375rem;
-		padding: 0.75rem;
-		overflow-x: auto;
-		margin-bottom: 0.6em;
-	}
-	.markdown-preview :global(blockquote) {
-		border-left: 3px solid var(--border);
-		padding-left: 0.75em;
-		color: var(--muted-foreground);
-		font-style: italic;
-		margin-bottom: 0.6em;
-	}
-	.markdown-preview :global(img) {
-		max-width: 100%;
-		border-radius: 0.375rem;
-	}
-	.markdown-preview :global(hr) {
-		border-color: var(--border);
-		margin: 1em 0;
-	}
-
-	/* Tables — both authored table blocks and the calendar widget. */
-	.markdown-preview :global(table) {
-		width: 100%;
-		border-collapse: collapse;
-		margin-bottom: 0.75em;
-		font-size: 0.9em;
-	}
-	.markdown-preview :global(th),
-	.markdown-preview :global(td) {
-		border: 1px solid var(--border);
-		padding: 0.4em 0.6em;
-		text-align: left;
-	}
-	.markdown-preview :global(th) {
-		background: var(--muted);
-		font-weight: 600;
-	}
-	.markdown-preview :global(caption) {
-		caption-side: top;
-		font-weight: 600;
-		padding-bottom: 0.4em;
-		text-align: left;
-	}
-	.markdown-preview :global(.cms-calendar td) {
-		text-align: center;
-	}
-
-	.markdown-preview :global(.cms-button) {
-		display: inline-block;
-		background: var(--primary);
-		color: var(--primary-foreground);
-		padding: 0.5em 1.1em;
-		border-radius: 0.375rem;
-		text-decoration: none;
-		font-weight: 500;
-	}
-
-	.markdown-preview :global(.cms-columns) {
-		display: grid;
-		gap: 1rem;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		margin-bottom: 0.75em;
-	}
-
-	.markdown-preview :global(.cms-embed) {
-		position: relative;
-		padding-bottom: 56.25%;
-		height: 0;
-		margin-bottom: 0.75em;
-	}
-	.markdown-preview :global(.cms-embed iframe) {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		border: 0;
-		border-radius: 0.375rem;
-	}
-
-	/* Placeholder only — the published site expands this into a real <form>
-	   at build time (backend EtaSiteRenderer), using the form's live field
-	   config, which this editor doesn't have. */
-	.markdown-preview :global(.cms-form) {
-		border: 2px dashed var(--border);
-		border-radius: 0.5rem;
-		padding: 1.25rem;
-		text-align: center;
-		color: var(--muted-foreground);
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	/* Page Builder plugin preview. The published equivalent ships from the plugin asset. */
-	.markdown-preview :global(.cms-pb-hero),
-	.markdown-preview :global(.cms-pb-callout),
-	.markdown-preview :global(.cms-pb-card-grid),
-	.markdown-preview :global(.cms-pb-gallery),
-	.markdown-preview :global(.cms-pb-faq),
-	.markdown-preview :global(.cms-pb-stats) {
-		margin: 1rem 0;
-		border-radius: 0.75rem;
-	}
-	.markdown-preview :global(.cms-pb-hero) {
-		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
-		align-items: center;
-		gap: 1.5rem;
-		padding: 2rem;
-	}
-	.markdown-preview :global(.cms-pb-hero__eyebrow) {
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-	.markdown-preview :global(.cms-pb-hero.cms-pb-hero--no-media) {
-		grid-template-columns: 1fr;
-		min-height: 18rem;
-	}
-	.markdown-preview :global(.cms-pb-hero__title) {
-		font-size: clamp(1.75rem, 4vw, 2.75rem);
-		margin-top: 0;
-	}
-	.markdown-preview :global(.cms-pb-hero__media img) {
-		width: 100%;
-		aspect-ratio: 4 / 3;
-		object-fit: cover;
-	}
-	.markdown-preview :global(.cms-pb-callout) {
-		padding: 1.5rem;
-	}
-	.markdown-preview :global(.cms-pb-align-center) {
-		text-align: center;
-	}
-	.markdown-preview :global(.cms-pb-tone-default) {
-		border: 1px solid var(--border);
-		background: var(--background);
-	}
-	.markdown-preview :global(.cms-pb-tone-primary) {
-		background: var(--primary);
-		color: var(--primary-foreground);
-	}
-	.markdown-preview :global(.cms-pb-tone-dark) {
-		background: #0f172a;
-		color: #f8fafc;
-	}
-	.markdown-preview :global(.cms-pb-tone-soft) {
-		background: var(--muted);
-	}
-	.markdown-preview :global(.cms-pb-tone-info) {
-		background: #e0f2fe;
-		color: #075985;
-	}
-	.markdown-preview :global(.cms-pb-tone-success) {
-		background: #dcfce7;
-		color: #166534;
-	}
-	.markdown-preview :global(.cms-pb-tone-warning) {
-		background: #fef3c7;
-		color: #92400e;
-	}
-	.markdown-preview :global(.cms-pb-card-grid),
-	.markdown-preview :global(.cms-pb-gallery) {
-		display: grid;
-		grid-template-columns: repeat(var(--cms-pb-columns, 3), minmax(0, 1fr));
-		gap: 1rem;
-		padding: 1.25rem;
-	}
-	.markdown-preview :global(.cms-pb-cols-2) {
-		--cms-pb-columns: 2;
-	}
-	.markdown-preview :global(.cms-pb-cols-3) {
-		--cms-pb-columns: 3;
-	}
-	.markdown-preview :global(.cms-pb-cols-4) {
-		--cms-pb-columns: 4;
-	}
-	.markdown-preview :global(.cms-pb-card-grid__title),
-	.markdown-preview :global(.cms-pb-card-grid__text),
-	.markdown-preview :global(.cms-pb-gallery__title) {
-		grid-column: 1 / -1;
-	}
-	.markdown-preview :global(.cms-pb-card) {
-		overflow: hidden;
-		border: 1px solid var(--border);
-		border-radius: 0.625rem;
-		background: var(--background);
-		color: var(--foreground);
-	}
-	.markdown-preview :global(.cms-pb-card__media img),
-	.markdown-preview :global(.cms-pb-gallery__image) {
-		width: 100%;
-		aspect-ratio: 16 / 10;
-		object-fit: cover;
-		border-radius: 0;
-	}
-	.markdown-preview :global(.cms-pb-card__body) {
-		padding: 1rem;
-	}
-	.markdown-preview :global(.cms-pb-gallery__item) {
-		overflow: hidden;
-		border-radius: 0.5rem;
-		background: var(--muted);
-	}
-	.markdown-preview :global(.cms-pb-gallery__caption) {
-		padding: 0.5rem 0.75rem;
-		font-size: 0.8rem;
-	}
-	.markdown-preview :global(.cms-pb-stat) {
-		padding: 1rem;
-		text-align: center;
-		background: var(--background);
-		color: var(--foreground);
-	}
-	.markdown-preview :global(.cms-pb-stats) {
-		padding: 1.25rem;
-	}
-	.markdown-preview :global(.cms-pb-stats__list) {
-		display: grid;
-		grid-template-columns: repeat(var(--cms-pb-columns, 3), minmax(0, 1fr));
-		gap: 1px;
-		margin: 0;
-	}
-	.markdown-preview :global(.cms-pb-stat__value) {
-		font-size: 1.75rem;
-		font-weight: 800;
-	}
-	.markdown-preview :global(.cms-pb-faq) {
-		padding: 1.25rem;
-	}
-	.markdown-preview :global(.cms-pb-faq__item) {
-		border-bottom: 1px solid var(--border);
-		padding: 0.8rem 0;
-	}
-	.markdown-preview :global(.cms-pb-faq__question) {
-		cursor: pointer;
-		font-weight: 650;
-	}
-	.markdown-preview :global(.cms-pb-faq__answer) {
-		padding-top: 0.6rem;
-		color: var(--muted-foreground);
-	}
-	.markdown-preview :global(.cms-pb-spacer.cms-pb-space-sm) { height: 1rem; }
-	.markdown-preview :global(.cms-pb-spacer.cms-pb-space-md) { height: 2.5rem; }
-	.markdown-preview :global(.cms-pb-spacer.cms-pb-space-lg) { height: 5rem; }
-
-	/* Keep editor device frames in lockstep with the plugin's public CSS. */
-	@container (max-width: 60rem) {
-		.markdown-preview :global(.cms-pb-hero) {
-			grid-template-columns: 1fr;
-		}
-		.markdown-preview :global(.cms-pb-hero__media) {
-			max-height: 24rem;
-			order: -1;
-		}
-		.markdown-preview :global(.cms-pb-cols-4) { --cms-pb-columns: 2; }
-	}
-
-	@container (max-width: 42rem) {
-		.markdown-preview :global(.cms-pb-hero) { min-height: 0; }
-		.markdown-preview :global(.cms-pb-hero__content) { padding: 1.5rem; }
-		.markdown-preview :global(.cms-pb-card-grid),
-		.markdown-preview :global(.cms-pb-gallery) {
-			--cms-pb-columns: 1;
-		}
-		.markdown-preview :global(.cms-pb-stats) { --cms-pb-columns: 2; }
-		.markdown-preview :global(.cms-pb-spacer.cms-pb-space-lg) { height: 3rem; }
-	}
-
-	@container (max-width: 28rem) {
-		.markdown-preview :global(.cms-pb-stats) { --cms-pb-columns: 1; }
-	}
-</style>

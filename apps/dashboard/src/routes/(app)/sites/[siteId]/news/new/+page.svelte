@@ -2,18 +2,18 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Alert } from '$lib/components/ui/alert';
 	import FormFieldError from '$lib/components/app/FormFieldError.svelte';
 	import BlockEditor from '$lib/components/app/editor/BlockEditor.svelte';
 	import MediaPicker from '$lib/components/app/media/MediaPicker.svelte';
+	import TaxonomyPanel from '$lib/components/app/news/TaxonomyPanel.svelte';
 	import { slugify } from '$lib/utils';
 	import type { Media } from '$lib/types';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import ImagePlus from '@lucide/svelte/icons/image-plus';
 	import X from '@lucide/svelte/icons/x';
-	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -24,6 +24,10 @@
 	let bodyMarkdown = $state(form?.bodyMarkdown ?? '');
 	let excerpt = $state(form?.excerpt ?? '');
 	let featuredImageUrl = $state(form?.featuredImageUrl ?? '');
+	let categories = $state(data.categories);
+	let tags = $state(data.tags);
+	let selectedCategoryIds = $state(form?.categoryIds ?? []);
+	let selectedTagIds = $state(form?.tagIds ?? []);
 	let pickerOpen = $state(false);
 	let submitting = $state(false);
 
@@ -37,7 +41,9 @@
 </svelte:head>
 
 <form
+	id="news-new-form"
 	method="POST"
+	action="?/create"
 	use:enhance={() => {
 		submitting = true;
 		return async ({ update }) => {
@@ -46,54 +52,57 @@
 		};
 	}}
 >
-	<div class="mb-4 flex items-center justify-between gap-2">
-		<Button type="button" variant="ghost" href="/sites/{data.site.id}/news">
-			<ArrowLeft class="size-4" /> Semua Berita
-		</Button>
-		<Button type="submit" disabled={submitting}>
-			{#if submitting}<LoaderCircle class="animate-spin" />{/if}
-			Simpan Draft
-		</Button>
-	</div>
-
 	{#if form?.message}
-		<Alert variant="destructive" class="mb-4">{form.message}</Alert>
+		<Alert variant="destructive" class="mb-3">{form.message}</Alert>
 	{/if}
 
-	<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-		<div class="min-w-0 space-y-3">
-			<div>
-				<Input
-					name="title"
-					bind:value={title}
-					oninput={onTitleInput}
-					placeholder="Tambahkan judul"
-					required
-					class="h-auto border-none px-0 text-3xl font-bold shadow-none focus-visible:ring-0"
-				/>
-				<FormFieldError errors={form?.errors} field="title" />
-			</div>
+	<BlockEditor
+		name="bodyMarkdown"
+		bind:value={bodyMarkdown}
+		siteId={data.site.id}
+		forms={data.forms}
+		enabled={data.pageBuilderActive}
+		formBuilderEnabled={data.formBuilderActive}
+		backHref="/sites/{data.site.id}/news"
+		backLabel="Semua Berita"
+		documentLabel="Berita"
+	>
+		{#snippet actions()}
+			<Button type="submit" form="news-new-form" size="sm" disabled={submitting}>
+				{#if submitting}<LoaderCircle class="animate-spin" />{/if}
+				Simpan Draft
+			</Button>
+		{/snippet}
 
-			<div class="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+		{#snippet documentHeader()}
+			<Input
+				name="title"
+				bind:value={title}
+				oninput={onTitleInput}
+				placeholder="Tambahkan judul"
+				required
+				class="h-auto border-none px-0 text-4xl font-bold shadow-none focus-visible:ring-0"
+			/>
+			<FormFieldError errors={form?.errors} field="title" />
+			<div class="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
 				<span>Slug:</span>
-				<Input name="slug" bind:value={slug} oninput={() => (slugTouched = true)} required class="h-7 max-w-64 text-xs" />
+				<Input
+					name="slug"
+					bind:value={slug}
+					oninput={() => (slugTouched = true)}
+					required
+					class="h-7 max-w-64 text-xs"
+				/>
 			</div>
 			<FormFieldError errors={form?.errors} field="slug" />
+		{/snippet}
 
-			<Card>
-				<CardContent class="pt-6">
-					<BlockEditor name="bodyMarkdown" bind:value={bodyMarkdown} siteId={data.site.id} forms={data.forms} enabled={data.pageBuilderActive} formBuilderEnabled={data.formBuilderActive} />
-					<FormFieldError errors={form?.errors} field="bodyMarkdown" />
-				</CardContent>
-			</Card>
-		</div>
+		{#snippet documentPanel()}
+			<div class="space-y-5">
+				<TaxonomyPanel bind:categories bind:tags bind:selectedCategoryIds bind:selectedTagIds />
 
-		<div class="space-y-4">
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Gambar Utama</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-2">
+				<div class="space-y-2 border-t border-border pt-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gambar Utama</p>
 					{#if featuredImageUrl}
 						<img src={featuredImageUrl} alt="" class="w-full rounded-md border border-border object-cover" />
 						<div class="flex gap-2">
@@ -109,15 +118,14 @@
 					{/if}
 					<input type="hidden" name="featuredImageUrl" value={featuredImageUrl} />
 					<FormFieldError errors={form?.errors} field="featuredImageUrl" />
-				</CardContent>
-			</Card>
+				</div>
 
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Ringkasan</CardTitle>
-				</CardHeader>
-				<CardContent>
+				<div class="space-y-2 border-t border-border pt-4">
+					<Label for="excerpt" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Ringkasan
+					</Label>
 					<Textarea
+						id="excerpt"
 						name="excerpt"
 						maxlength={500}
 						rows={4}
@@ -125,10 +133,12 @@
 						placeholder="Ringkasan singkat (opsional, maks. 500 karakter)..."
 					/>
 					<FormFieldError errors={form?.errors} field="excerpt" />
-				</CardContent>
-			</Card>
-		</div>
-	</div>
+				</div>
+
+				<FormFieldError errors={form?.errors} field="bodyMarkdown" />
+			</div>
+		{/snippet}
+	</BlockEditor>
 </form>
 
 <MediaPicker

@@ -6,13 +6,13 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Select } from '$lib/components/ui/select';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Alert } from '$lib/components/ui/alert';
 	import FormFieldError from '$lib/components/app/FormFieldError.svelte';
 	import BlockEditor from '$lib/components/app/editor/BlockEditor.svelte';
 	import StatusBadge from '$lib/components/app/StatusBadge.svelte';
 	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import MediaPicker from '$lib/components/app/media/MediaPicker.svelte';
+	import TaxonomyPanel from '$lib/components/app/news/TaxonomyPanel.svelte';
 	import { allowedStatusTransitions, type ContentStatus, type Media } from '$lib/types';
 	import { formatDate } from '$lib/utils';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -20,7 +20,6 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import ImagePlus from '@lucide/svelte/icons/image-plus';
 	import X from '@lucide/svelte/icons/x';
-	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -31,6 +30,10 @@
 	let currentStatus = $state<ContentStatus>((form?.status as ContentStatus) ?? data.news.status);
 	let excerpt = $state(form?.excerpt ?? data.news.excerpt ?? '');
 	let featuredImageUrl = $state(form?.featuredImageUrl ?? data.news.featuredImageUrl ?? '');
+	let categories = $state(data.categories);
+	let tags = $state(data.tags);
+	let selectedCategoryIds = $state(form?.categoryIds ?? data.news.categories.map((c) => c.id));
+	let selectedTagIds = $state(form?.tagIds ?? data.news.tags.map((t) => t.id));
 	let pickerOpen = $state(false);
 	let submitting = $state(false);
 	let publishing = $state(false);
@@ -51,47 +54,25 @@
 	<title>{data.news.title} — {data.site.name}</title>
 </svelte:head>
 
-<div class="mb-4 flex items-center justify-between gap-2">
-	<Button type="button" variant="ghost" href="/sites/{data.site.id}/news">
-		<ArrowLeft class="size-4" /> Semua Berita
-	</Button>
-	<div class="flex items-center gap-2">
-		<StatusBadge status={data.news.status} />
-
-		<form
-			method="POST"
-			action="?/publish"
-			use:enhance={() => {
-				publishing = true;
-				return async ({ result, update }) => {
-					publishing = false;
-					if (result.type === 'success') {
-						toast.success('Dipublikasikan. Situs akan diperbarui dalam beberapa detik.');
-					}
-					await update();
-				};
-			}}
-		>
-			<Button type="submit" variant="outline" disabled={publishing || data.news.status === 'published'}>
-				{#if publishing}<LoaderCircle class="animate-spin" />{:else}<UploadCloud />{/if}
-				Publish
-			</Button>
-		</form>
-
-		<Button variant="destructive" size="icon" type="button" onclick={() => (deleteOpen = true)} title="Hapus berita">
-			<Trash2 />
-		</Button>
-
-		<Button type="submit" form="news-edit-form" disabled={submitting}>
-			{#if submitting}<LoaderCircle class="animate-spin" />{/if}
-			Simpan
-		</Button>
-	</div>
-</div>
-
-{#if form?.message}
-	<Alert variant="destructive" class="mb-4">{form.message}</Alert>
-{/if}
+<!--
+	Publish targets its own action. HTML forms cannot nest, so it lives outside
+	the edit form and the toolbar button reaches it through `form="…"`.
+-->
+<form
+	id="news-publish-form"
+	method="POST"
+	action="?/publish"
+	use:enhance={() => {
+		publishing = true;
+		return async ({ result, update }) => {
+			publishing = false;
+			if (result.type === 'success') {
+				toast.success('Dipublikasikan. Situs akan diperbarui dalam beberapa detik.');
+			}
+			await update();
+		};
+	}}
+></form>
 
 <form
 	id="news-edit-form"
@@ -106,54 +87,81 @@
 		};
 	}}
 >
-	<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-		<div class="min-w-0 space-y-3">
-			<div>
-				<Input
-					name="title"
-					bind:value={title}
-					placeholder="Tambahkan judul"
-					required
-					class="h-auto border-none px-0 text-3xl font-bold shadow-none focus-visible:ring-0"
-				/>
-				<FormFieldError errors={form?.errors} field="title" />
-			</div>
+	{#if form?.message}
+		<Alert variant="destructive" class="mb-3">{form.message}</Alert>
+	{/if}
 
-			<div class="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+	<BlockEditor
+		name="bodyMarkdown"
+		bind:value={bodyMarkdown}
+		siteId={data.site.id}
+		forms={data.forms}
+		enabled={data.pageBuilderActive}
+		formBuilderEnabled={data.formBuilderActive}
+		backHref="/sites/{data.site.id}/news"
+		backLabel="Semua Berita"
+		documentLabel="Berita"
+	>
+		{#snippet actions()}
+			<StatusBadge status={data.news.status} />
+			<Button
+				type="submit"
+				form="news-publish-form"
+				variant="outline"
+				size="sm"
+				disabled={publishing || data.news.status === 'published'}
+			>
+				{#if publishing}<LoaderCircle class="animate-spin" />{:else}<UploadCloud />{/if}
+				<span class="hidden sm:inline">Publish</span>
+			</Button>
+			<Button variant="destructive" size="icon" type="button" onclick={() => (deleteOpen = true)} title="Hapus berita">
+				<Trash2 />
+			</Button>
+			<Button type="submit" form="news-edit-form" size="sm" disabled={submitting}>
+				{#if submitting}<LoaderCircle class="animate-spin" />{/if}
+				Simpan
+			</Button>
+		{/snippet}
+
+		{#snippet documentHeader()}
+			<Input
+				name="title"
+				bind:value={title}
+				placeholder="Tambahkan judul"
+				required
+				class="h-auto border-none px-0 text-4xl font-bold shadow-none focus-visible:ring-0"
+			/>
+			<FormFieldError errors={form?.errors} field="title" />
+			<div class="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
 				<span>Slug:</span>
 				<Input name="slug" bind:value={slug} required class="h-7 max-w-64 text-xs" />
 			</div>
 			<FormFieldError errors={form?.errors} field="slug" />
+		{/snippet}
 
-			<Card>
-				<CardContent class="pt-6">
-					<BlockEditor name="bodyMarkdown" bind:value={bodyMarkdown} siteId={data.site.id} forms={data.forms} enabled={data.pageBuilderActive} formBuilderEnabled={data.formBuilderActive} />
-					<FormFieldError errors={form?.errors} field="bodyMarkdown" />
-				</CardContent>
-			</Card>
-		</div>
-
-		<div class="space-y-4">
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Status</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-1.5">
-					<Label for="status">Ubah status</Label>
+		{#snippet documentPanel()}
+			<div class="space-y-5">
+				<div class="space-y-1.5">
+					<Label for="status">Status</Label>
 					<Select id="status" name="status" bind:value={currentStatus}>
 						{#each allowedStatusTransitions(data.news.status) as status (status)}
 							<option value={status}>{statusLabels[status]}</option>
 						{/each}
 					</Select>
 					<p class="text-xs text-muted-foreground">Diperbarui {formatDate(data.news.updatedAt)}</p>
-				</CardContent>
-			</Card>
+				</div>
 
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Gambar Utama</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-2">
+				<div class="border-t border-border pt-4">
+					<TaxonomyPanel
+						bind:categories
+						bind:tags
+						bind:selectedCategoryIds
+						bind:selectedTagIds
+					/>
+				</div>
+
+				<div class="space-y-2 border-t border-border pt-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gambar Utama</p>
 					{#if featuredImageUrl}
 						<img src={featuredImageUrl} alt="" class="w-full rounded-md border border-border object-cover" />
 						<div class="flex gap-2">
@@ -169,15 +177,14 @@
 					{/if}
 					<input type="hidden" name="featuredImageUrl" value={featuredImageUrl} />
 					<FormFieldError errors={form?.errors} field="featuredImageUrl" />
-				</CardContent>
-			</Card>
+				</div>
 
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Ringkasan</CardTitle>
-				</CardHeader>
-				<CardContent>
+				<div class="space-y-2 border-t border-border pt-4">
+					<Label for="excerpt" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Ringkasan
+					</Label>
 					<Textarea
+						id="excerpt"
 						name="excerpt"
 						maxlength={500}
 						rows={4}
@@ -185,10 +192,12 @@
 						placeholder="Ringkasan singkat (opsional, maks. 500 karakter)..."
 					/>
 					<FormFieldError errors={form?.errors} field="excerpt" />
-				</CardContent>
-			</Card>
-		</div>
-	</div>
+				</div>
+
+				<FormFieldError errors={form?.errors} field="bodyMarkdown" />
+			</div>
+		{/snippet}
+	</BlockEditor>
 </form>
 
 <ConfirmDialog

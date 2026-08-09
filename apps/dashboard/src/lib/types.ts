@@ -110,6 +110,37 @@ export interface AddSiteMemberInput {
 	roleSlug: SiteRole;
 }
 
+/**
+ * Taxonomies (backend `src/modules/categories/`, `src/modules/tags/`) are
+ * per-site and only ever attached to news — pages have no taxonomy columns.
+ * Categories nest via `parentId`; tags are flat.
+ */
+export interface Category {
+	id: string;
+	siteId: string;
+	parentId: string | null;
+	name: string;
+	slug: string;
+	description: string | null;
+	seoTitle: string | null;
+	seoDescription: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface Tag {
+	id: string;
+	siteId: string;
+	name: string;
+	slug: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** What `GET /sites/:siteId/news` embeds on each item — a subset of the full rows. */
+export type NewsCategory = Pick<Category, 'id' | 'name' | 'slug' | 'parentId'>;
+export type NewsTag = Pick<Tag, 'id' | 'name' | 'slug'>;
+
 export interface NewsItem {
 	id: string;
 	siteId: string;
@@ -121,6 +152,8 @@ export interface NewsItem {
 	status: ContentStatus;
 	authorId: string;
 	authorName?: string;
+	categories: NewsCategory[];
+	tags: NewsTag[];
 	createdAt: string;
 	updatedAt: string;
 	publishedAt?: string | null;

@@ -6,7 +6,6 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Select } from '$lib/components/ui/select';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Alert } from '$lib/components/ui/alert';
 	import FormFieldError from '$lib/components/app/FormFieldError.svelte';
 	import BlockEditor from '$lib/components/app/editor/BlockEditor.svelte';
@@ -17,7 +16,6 @@
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import UploadCloud from '@lucide/svelte/icons/upload-cloud';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -48,47 +46,25 @@
 	<title>{data.page.title} — {data.site.name}</title>
 </svelte:head>
 
-<div class="mb-4 flex items-center justify-between gap-2">
-	<Button type="button" variant="ghost" href="/sites/{data.site.id}/pages">
-		<ArrowLeft class="size-4" /> Semua Halaman
-	</Button>
-	<div class="flex items-center gap-2">
-		<StatusBadge status={data.page.status} />
-
-		<form
-			method="POST"
-			action="?/publish"
-			use:enhance={() => {
-				publishing = true;
-				return async ({ result, update }) => {
-					publishing = false;
-					if (result.type === 'success') {
-						toast.success('Dipublikasikan. Situs akan diperbarui dalam beberapa detik.');
-					}
-					await update();
-				};
-			}}
-		>
-			<Button type="submit" variant="outline" disabled={publishing || data.page.status === 'published'}>
-				{#if publishing}<LoaderCircle class="animate-spin" />{:else}<UploadCloud />{/if}
-				Publish
-			</Button>
-		</form>
-
-		<Button variant="destructive" size="icon" type="button" onclick={() => (deleteOpen = true)} title="Hapus halaman">
-			<Trash2 />
-		</Button>
-
-		<Button type="submit" form="page-edit-form" disabled={submitting}>
-			{#if submitting}<LoaderCircle class="animate-spin" />{/if}
-			Simpan
-		</Button>
-	</div>
-</div>
-
-{#if form?.message}
-	<Alert variant="destructive" class="mb-4">{form.message}</Alert>
-{/if}
+<!--
+	Publish targets its own action. HTML forms cannot nest, so it lives outside
+	the edit form and the toolbar button reaches it through `form="…"`.
+-->
+<form
+	id="page-publish-form"
+	method="POST"
+	action="?/publish"
+	use:enhance={() => {
+		publishing = true;
+		return async ({ result, update }) => {
+			publishing = false;
+			if (result.type === 'success') {
+				toast.success('Dipublikasikan. Situs akan diperbarui dalam beberapa detik.');
+			}
+			await update();
+		};
+	}}
+></form>
 
 <form
 	id="page-edit-form"
@@ -103,54 +79,72 @@
 		};
 	}}
 >
-	<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-		<div class="min-w-0 space-y-3">
-			<div>
-				<Input
-					name="title"
-					bind:value={title}
-					placeholder="Tambahkan judul"
-					required
-					class="h-auto border-none px-0 text-3xl font-bold shadow-none focus-visible:ring-0"
-				/>
-				<FormFieldError errors={form?.errors} field="title" />
-			</div>
+	{#if form?.message}
+		<Alert variant="destructive" class="mb-3">{form.message}</Alert>
+	{/if}
 
-			<div class="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+	<BlockEditor
+		name="bodyMarkdown"
+		bind:value={bodyMarkdown}
+		siteId={data.site.id}
+		forms={data.forms}
+		enabled={data.pageBuilderActive}
+		formBuilderEnabled={data.formBuilderActive}
+		backHref="/sites/{data.site.id}/pages"
+		backLabel="Semua Halaman"
+		documentLabel="Halaman"
+	>
+		{#snippet actions()}
+			<StatusBadge status={data.page.status} />
+			<Button
+				type="submit"
+				form="page-publish-form"
+				variant="outline"
+				size="sm"
+				disabled={publishing || data.page.status === 'published'}
+			>
+				{#if publishing}<LoaderCircle class="animate-spin" />{:else}<UploadCloud />{/if}
+				<span class="hidden sm:inline">Publish</span>
+			</Button>
+			<Button variant="destructive" size="icon" type="button" onclick={() => (deleteOpen = true)} title="Hapus halaman">
+				<Trash2 />
+			</Button>
+			<Button type="submit" form="page-edit-form" size="sm" disabled={submitting}>
+				{#if submitting}<LoaderCircle class="animate-spin" />{/if}
+				Simpan
+			</Button>
+		{/snippet}
+
+		{#snippet documentHeader()}
+			<Input
+				name="title"
+				bind:value={title}
+				placeholder="Tambahkan judul"
+				required
+				class="h-auto border-none px-0 text-4xl font-bold shadow-none focus-visible:ring-0"
+			/>
+			<FormFieldError errors={form?.errors} field="title" />
+			<div class="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
 				<span>Slug:</span>
 				<Input name="slug" bind:value={slug} required class="h-7 max-w-64 text-xs" />
 			</div>
 			<FormFieldError errors={form?.errors} field="slug" />
+		{/snippet}
 
-			<Card>
-				<CardContent class="pt-6">
-					<BlockEditor name="bodyMarkdown" bind:value={bodyMarkdown} siteId={data.site.id} forms={data.forms} enabled={data.pageBuilderActive} formBuilderEnabled={data.formBuilderActive} />
-					<FormFieldError errors={form?.errors} field="bodyMarkdown" />
-				</CardContent>
-			</Card>
-		</div>
-
-		<div class="space-y-4">
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Status</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-1.5">
-					<Label for="status">Ubah status</Label>
+		{#snippet documentPanel()}
+			<div class="space-y-5">
+				<div class="space-y-1.5">
+					<Label for="status">Status</Label>
 					<Select id="status" name="status" bind:value={currentStatus}>
 						{#each allowedStatusTransitions(data.page.status) as status (status)}
 							<option value={status}>{statusLabels[status]}</option>
 						{/each}
 					</Select>
 					<p class="text-xs text-muted-foreground">Diperbarui {formatDate(data.page.updatedAt)}</p>
-				</CardContent>
-			</Card>
+				</div>
 
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm">Atribut Halaman</CardTitle>
-				</CardHeader>
-				<CardContent class="space-y-3">
+				<div class="space-y-3 border-t border-border pt-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Atribut Halaman</p>
 					<div class="space-y-1.5">
 						<Label for="parentId">Halaman Induk (opsional)</Label>
 						<Select id="parentId" name="parentId" value={form?.parentId ?? data.page.parentId ?? ''}>
@@ -161,8 +155,8 @@
 						</Select>
 						{#if data.page.parentId}
 							<p class="text-xs text-muted-foreground">
-								Catatan: API belum bisa menghapus induk yang sudah diset — memilih "Tidak ada" di sini tidak akan
-								berpengaruh.
+								Catatan: API belum bisa menghapus induk yang sudah diset — memilih "Tidak ada" di sini tidak
+								akan berpengaruh.
 							</p>
 						{/if}
 					</div>
@@ -180,10 +174,12 @@
 							pastikan Anda menonaktifkan yang lama secara manual.
 						</Alert>
 					{/if}
-				</CardContent>
-			</Card>
-		</div>
-	</div>
+				</div>
+
+				<FormFieldError errors={form?.errors} field="bodyMarkdown" />
+			</div>
+		{/snippet}
+	</BlockEditor>
 </form>
 
 <ConfirmDialog

@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,7 +7,7 @@ import { AppModule } from './app.module';
 import { ADMIN_JSON_BODY_LIMIT } from './common/content-limits';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useBodyParser('json', { limit: ADMIN_JSON_BODY_LIMIT });
   app.use(helmet());
   app.use(cookieParser());

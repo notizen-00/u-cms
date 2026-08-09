@@ -150,23 +150,13 @@ export const BLOCK_CATEGORIES: { label: string; types: BlockType[] }[] = [
 	{ label: 'Widget', types: ['faq', 'table', 'calendar', 'html', 'form'] }
 ];
 
-export const OVERLAY_EDITED_TYPES: BlockType[] = [
-	'table',
-	'columns',
-	'button',
-	'embed',
-	'calendar',
-	'html',
-	'image',
-	'form',
-	'hero',
-	'callout',
-	'cards',
-	'gallery',
-	'stats',
-	'faq',
-	'spacer'
-];
+/**
+ * Blocks whose configuration lives entirely in the inspector — a URL, a form
+ * id, a month, raw markup — with nothing on the canvas to start typing into.
+ * Inserting one opens the inspector so it doesn't land as a blank placeholder.
+ * Every other block is authored directly on the canvas.
+ */
+export const INSPECTOR_FIRST_TYPES: BlockType[] = ['button', 'embed', 'calendar', 'html', 'form'];
 
 export type PageBuilderPatternId = 'landing' | 'profile' | 'faq';
 

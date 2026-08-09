@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./lib/styles/content.css";
+@import "./lib/styles/editor.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
