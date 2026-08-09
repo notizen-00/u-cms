@@ -83,6 +83,19 @@ Buka dashboard. Instance kosong akan mengarahkan Anda ke `/setup` untuk membuat 
 
 Kalau instance sudah bisa diakses publik sebelum langkah ini selesai, isi `SETUP_TOKEN` supaya `/setup` tidak bisa diklaim orang lain.
 
+## Mengembangkan tema (live preview)
+
+Untuk mengedit tema (mis. `themes/faculty`) tanpa perlu menyalakan database, Redis, MinIO, atau login — pakai server preview mandiri:
+
+```sh
+pnpm theme:dev faculty          # slug = nama folder di themes/, default "faculty"
+pnpm theme:dev premium --port=4311
+```
+
+Skrip ini membangun tema sekali, lalu merender layout-nya (home, `/news/`, detail berita, halaman statis) dengan konten contoh lewat jalur render yang sama persis dengan `SvelteSiteRenderer`/`EtaSiteRenderer` di `apps/backend` — bedanya tanpa DB/queue/auth. Setiap kali file di `themes/<slug>/src` disimpan, tema di-build ulang dan browser me-reload otomatis (live reload lewat SSE). Cocok untuk kedua jenis tema (Svelte: `faculty`, `university`; Eta: `default`, `premium`) — jenisnya dideteksi otomatis.
+
+Buka `http://localhost:4310/` (atau port yang dipakai) — daftar route yang tersedia dicetak saat server menyala.
+
 ## Struktur monorepo
 
 ```
@@ -121,6 +134,7 @@ Semuanya di-generate oleh `pnpm setup` dan tidak masuk git.
 pnpm setup       # installer native (idempoten — aman dijalankan ulang)
 pnpm dev         # build sekali dan jalankan tanpa watcher
 pnpm dev:watch   # semua app dalam mode watch + hot reload dashboard
+pnpm theme:dev   # live-preview satu tema tanpa DB/Redis/MinIO (lihat "Mengembangkan tema")
 pnpm start       # semua app dari hasil build
 pnpm build       # build semua package/app
 pnpm typecheck   # typecheck semua package/app
