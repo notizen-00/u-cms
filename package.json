@@ -9,6 +9,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "dev": "node scripts/dev.mjs",
+    "dev:watch": "node scripts/dev.mjs --watch",
     "start": "node scripts/start.mjs",
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",

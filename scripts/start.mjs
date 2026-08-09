@@ -20,10 +20,20 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './runtime/paths.mjs';
 import { ensureAll } from './runtime/runtime-manager.mjs';
+import { isPortOpen } from './runtime/ports.mjs';
 import { dim, heading, printError } from './runtime/ui.mjs';
 
 const BACKEND = join(ROOT, 'apps', 'backend');
 const DASHBOARD = join(ROOT, 'apps', 'dashboard');
+const args = new Set(process.argv.slice(2));
+const flags = {
+	skipInfra: args.has('--skip-infra'),
+	statusOnly: args.has('--status-only'),
+	debug: args.has('--debug')
+};
+
+const READY_TIMEOUT_MS = 30_000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code, text) => (useColor ? `\u001b[${code}m${text}\u001b[0m` : text);
@@ -64,10 +74,34 @@ function pipe(stream, label, target) {
 	});
 }
 
+/** Drains a hidden service log while retaining enough output to explain a startup failure. */
+function retain(stream, maxLength = 12_000) {
+	let output = '';
+	stream.setEncoding('utf8');
+	stream.on('data', (chunk) => {
+		output = `${output}${chunk}`.slice(-maxLength);
+	});
+	return () => output.trim();
+}
+
+async function waitForPort({ name, port, child }) {
+	const deadline = Date.now() + READY_TIMEOUT_MS;
+	while (Date.now() < deadline) {
+		if (child.exitCode !== null || child.signalCode !== null) {
+			throw new Error(`${name} exited before becoming ready.`);
+		}
+		if (await isPortOpen(Number(port))) return;
+		await sleep(200);
+	}
+	throw new Error(`${name} did not become ready on 127.0.0.1:${port} within 30s.`);
+}
+
 async function main() {
-	heading('Checking infrastructure');
-	const infraResult = await ensureAll({ mode: 'auto', yes: false });
-	if (infraResult.mode === 'docker') console.log(dim(infraResult.note));
+	if (!flags.skipInfra) {
+		heading('Checking infrastructure');
+		const infraResult = await ensureAll({ mode: 'auto', yes: false });
+		if (infraResult.mode === 'docker') console.log(dim(infraResult.note));
+	}
 
 	// Read env AFTER ensureAll — a first-ever run may have just written real
 	// generated DATABASE_URL/REDIS_URL/MINIO_* values into a freshly-created
@@ -81,7 +115,7 @@ async function main() {
 	const dashboardPort = process.env.DASHBOARD_PORT ?? dashboardEnv.PORT ?? '5173';
 
 	const services = [
-		{ name: 'api', color: '36', cwd: BACKEND, entry: 'dist/main.js', file: backendEnv },
+		{ name: 'api', color: '36', cwd: BACKEND, entry: 'dist/main.js', file: backendEnv, port: apiPort },
 		{ name: 'worker', color: '35', cwd: BACKEND, entry: 'dist/main-worker.js', file: backendEnv },
 		{
 			name: 'dashboard',
@@ -89,6 +123,7 @@ async function main() {
 			cwd: DASHBOARD,
 			entry: 'build/index.js',
 			file: dashboardEnv,
+			port: dashboardPort,
 			overrides: { PORT: dashboardPort }
 		}
 	];
@@ -130,14 +165,23 @@ async function main() {
 			stdio: ['ignore', 'pipe', 'pipe']
 		});
 
-		pipe(child.stdout, label, process.stdout);
-		pipe(child.stderr, label, process.stderr);
+		if (flags.statusOnly) {
+			const stdout = retain(child.stdout);
+			const stderr = retain(child.stderr);
+			service.readOutput = () => [stdout(), stderr()].filter(Boolean).join('\n');
+		} else {
+			pipe(child.stdout, label, process.stdout);
+			pipe(child.stderr, label, process.stderr);
+		}
+		service.child = child;
 
 		child.on('exit', (code, signal) => {
 			if (shuttingDown) return;
 			// One process dying leaves a half-working instance, which is more
 			// confusing than a clean stop — take the whole group down with it.
 			console.error(`${label} exited (${signal ?? `code ${code}`}); stopping the rest.`);
+			const output = service.readOutput?.();
+			if (output) console.error(output);
 			shutdown(code ?? 1);
 		});
 
@@ -147,14 +191,29 @@ async function main() {
 	process.on('SIGINT', () => shutdown(0));
 	process.on('SIGTERM', () => shutdown(0));
 
+	try {
+		await Promise.all(
+			services.filter((service) => service.port).map((service) => waitForPort(service))
+		);
+	} catch (error) {
+		for (const child of children) {
+			if (child.exitCode === null && child.signalCode === null) child.kill();
+		}
+		const output = services.map((service) => service.readOutput?.()).filter(Boolean).join('\n');
+		if (output) console.error(output);
+		throw error;
+	}
+
 	console.log(
-		`\n${paint('1', 'Unej CMS running.')}  ` +
-			`dashboard http://localhost:${dashboardPort}  ·  api http://localhost:${apiPort}\n` +
-			`${paint('2', 'Press Ctrl+C to stop all three.')}\n`
+		`\n${paint('1', 'UNEJ CMS ready')}\n\n` +
+			`${paint('32', '✓')} Dashboard       http://localhost:${dashboardPort}\n` +
+			`${paint('32', '✓')} API             http://localhost:${apiPort}\n` +
+			`${paint('32', '✓')} Builder worker  running\n\n` +
+			`${paint('2', 'No file watchers. Press Ctrl+C to stop the application.')}\n`
 	);
 }
 
 main().catch((error) => {
-	printError(error);
+	printError(error, { debug: flags.debug });
 	process.exit(1);
 });

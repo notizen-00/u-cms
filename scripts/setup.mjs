@@ -65,7 +65,12 @@ async function resolveInfrastructure(backendWasCreated) {
 		return;
 	}
 
-	const result = await ensureAll({ mode: flags.infra, yes: flags.yes, backendEnvWasCreated: backendWasCreated });
+	const result = await ensureAll({
+		mode: flags.infra,
+		yes: flags.yes,
+		backendEnvWasCreated: backendWasCreated,
+		reconcileCredentials: true
+	});
 	if (result.mode === 'docker') {
 		info(result.note);
 		return;

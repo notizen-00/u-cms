@@ -53,11 +53,12 @@ Satu perintah, dan skrip itu mengerjakan semuanya:
 Setelah itu:
 
 ```sh
-pnpm dev      # mode pengembangan: API + builder worker + dashboard + watcher paket
-pnpm start    # mode produksi: tiga proses yang sama, dari hasil build
+pnpm dev        # build sekali, lalu API + worker + dashboard tanpa watcher
+pnpm dev:watch  # mode pengembangan dengan hot reload
+pnpm start      # mode produksi: tiga proses yang sama, dari hasil build
 ```
 
-Dashboard dev ada di http://localhost:5173 (`pnpm dev` memakai Vite; `pnpm start` memakai adapter-node di port yang sama).
+Dashboard ada di http://localhost:5173. Gunakan `pnpm dev:watch` saat mengembangkan UI agar perubahan dimuat otomatis oleh Vite.
 
 Flag yang tersedia kalau Anda perlu kendali lebih:
 
@@ -117,7 +118,8 @@ Semuanya di-generate oleh `pnpm setup` dan tidak masuk git.
 
 ```sh
 pnpm setup       # installer native (idempoten — aman dijalankan ulang)
-pnpm dev         # semua app dalam mode dev (paralel)
+pnpm dev         # build sekali dan jalankan tanpa watcher
+pnpm dev:watch   # semua app dalam mode watch + hot reload dashboard
 pnpm start       # semua app dari hasil build
 pnpm build       # build semua package/app
 pnpm typecheck   # typecheck semua package/app

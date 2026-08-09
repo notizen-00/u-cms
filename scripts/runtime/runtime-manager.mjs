@@ -28,7 +28,7 @@ import { BACKEND_ENV_PATH, DASHBOARD_ENV_PATH, parseEnvFile, parseInfraTargets, 
 import { detectPlatform } from './platform.mjs';
 import { isPortOpen } from './ports.mjs';
 import { readOwnedPid } from './process.mjs';
-import { readConfig, writeConfig } from './config.mjs';
+import { readConfig, recordService, writeConfig } from './config.mjs';
 import { RUNTIME_DIR, RUNTIME_LOGS_DIR, RUNTIME_PIDS_DIR, servicePaths } from './paths.mjs';
 import { randomAlnum } from './secrets.mjs';
 import { UserFacingError, bold, cyan, dim, green, info, ok, red, warn } from './ui.mjs';
@@ -135,7 +135,13 @@ async function allRuntimes(env) {
  * still-installed portable one, instead of re-probing and possibly
  * reclassifying either one (PRD §22, §28).
  */
-export async function ensureAll({ mode = 'auto', yes = false, backendEnvWasCreated = false, explicitMode = false } = {}) {
+export async function ensureAll({
+	mode = 'auto',
+	yes = false,
+	backendEnvWasCreated = false,
+	explicitMode = false,
+	reconcileCredentials = false
+} = {}) {
 	if (mode === 'docker') {
 		return {
 			mode: 'docker',
@@ -160,7 +166,8 @@ export async function ensureAll({ mode = 'auto', yes = false, backendEnvWasCreat
 			wasCreated: backendEnvWasCreated,
 			target: targets.postgres,
 			platformTarget,
-			known: config.services.postgres
+			known: config.services.postgres,
+			reconcileCredentials
 		}),
 		planRedis({ mode: effectiveMode(config.services.redis), target: targets.redis, platformTarget, known: config.services.redis }),
 		planMinio({
@@ -201,7 +208,7 @@ export async function ensureAll({ mode = 'auto', yes = false, backendEnvWasCreat
 	return { mode, services: results };
 }
 
-async function planPostgres({ mode, wasCreated, target, platformTarget, known }) {
+async function planPostgres({ mode, wasCreated, target, platformTarget, known, reconcileCredentials }) {
 	const probeTarget = target ?? { host: '127.0.0.1', port: 5432, user: 'unej_cms', password: 'unej_cms', database: 'unej_cms' };
 
 	if (mode !== 'portable') {
@@ -219,15 +226,16 @@ async function planPostgres({ mode, wasCreated, target, platformTarget, known })
 	const resolved = resolvePostgresTarget(platformTarget);
 	if (!resolved) throw new UserFacingError(`No portable PostgreSQL build for ${platformTarget}.`);
 
-	// A fresh env holds .env.example's shared placeholder credentials — never
-	// let those become a real portable instance's actual password. A
-	// pre-existing env's values ARE a previous portable install's real,
-	// already-generated credentials, and must be reused verbatim.
-	const credentials = wasCreated || !known
+	// A fresh env holds .env.example's shared placeholder credentials, so this
+	// process replaces them with a generated password and persists it. An env
+	// that already existed is user-managed and remains the source of truth;
+	// generating a different, unpersisted password here would make migration
+	// authentication impossible after an interrupted setup.
+	const credentials = wasCreated
 		? { user: 'unej_cms', password: randomAlnum(), database: 'unej_cms' }
 		: { user: probeTarget.user, password: probeTarget.password, database: probeTarget.database };
 
-	return { service: 'postgres', action: 'install', target: resolved, credentials, known, wasCreated };
+	return { service: 'postgres', action: 'install', target: resolved, credentials, known, wasCreated, reconcileCredentials };
 }
 
 async function planRedis({ mode, target, platformTarget, known }) {
@@ -261,7 +269,7 @@ async function planMinio({ mode, wasCreated, target, platformTarget, known }) {
 	const resolved = resolveMinioTarget(platformTarget);
 	if (!resolved) throw new UserFacingError(`No portable MinIO build for ${platformTarget}.`);
 
-	const credentials = wasCreated || !known
+	const credentials = wasCreated
 		? { accessKey: 'unej_cms', secretKey: randomAlnum() }
 		: { accessKey: probeTarget.accessKey, secretKey: probeTarget.secretKey };
 
@@ -271,7 +279,9 @@ async function planMinio({ mode, wasCreated, target, platformTarget, known }) {
 async function applyPlan(entry) {
 	if (entry.action === 'reuse') {
 		info(`${SERVICE_LABELS[entry.service]}: reusing existing service at ${entry.target.host}:${entry.target.port}`);
-		return { config: { managed: false, host: entry.target.host, port: entry.target.port } };
+		const config = { managed: false, host: entry.target.host, port: entry.target.port };
+		await recordService(entry.service, config);
+		return { config };
 	}
 
 	const label = SERVICE_LABELS[entry.service];
@@ -291,6 +301,7 @@ async function applyPlan(entry) {
 
 	await runtime.install();
 	await runtime.initialize();
+	if (entry.service === 'postgres' && entry.reconcileCredentials) await runtime.reconcileCredentials();
 	const state = await runtime.start();
 	ok(`${label}: running on 127.0.0.1:${state.port}${state.consolePort ? ` (console ${state.consolePort})` : ''}`);
 
@@ -298,14 +309,16 @@ async function applyPlan(entry) {
 		await writeResolvedEnv(entry.service, { ...state, credentials: entry.credentials });
 	}
 
-	return {
-		config: {
-			managed: true,
-			host: '127.0.0.1',
-			port: state.port,
-			...(state.consolePort ? { consolePort: state.consolePort } : {})
-		}
+	const config = {
+		managed: true,
+		host: '127.0.0.1',
+		port: state.port,
+		...(state.consolePort ? { consolePort: state.consolePort } : {})
 	};
+	// Persist each successful service immediately. If a later download/start
+	// fails, the next setup still knows which earlier services belong to us.
+	await recordService(entry.service, config);
+	return { config };
 }
 
 /** Only called immediately after this process created apps/backend/.env — see module doc comment. */

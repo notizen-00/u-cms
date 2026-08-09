@@ -1,25 +1,45 @@
 #!/usr/bin/env node
 /**
- * `pnpm dev` — ensures the managed runtime is up (PRD §21), then hands off to
- * the existing `pnpm -r --parallel run dev`, which already runs every
- * workspace package's own dev script (backend API + worker, dashboard's Vite
- * server, every SDK/plugin/theme's `tsup --watch`). This file only adds the
- * infra preflight in front of that; it doesn't reimplement it.
+ * `pnpm dev` builds once and runs compiled services without file watchers.
+ * `pnpm dev:watch` performs the same safe initial build, then starts every
+ * workspace development process with hot reload enabled.
  */
+import { join } from 'node:path';
 import { ensureAll } from './runtime/runtime-manager.mjs';
 import { ROOT } from './runtime/paths.mjs';
 import { run } from './runtime/shell.mjs';
-import { bold, dim, heading, printError } from './runtime/ui.mjs';
+import { bold, dim, heading, ok, printError } from './runtime/ui.mjs';
 
-const debug = process.argv.slice(2).includes('--debug');
+const args = new Set(process.argv.slice(2));
+const debug = args.has('--debug');
+const watch = args.has('--watch');
+const WATCH_PACKAGE_FILTERS = ['./packages/sdk/**', './plugins/**', './themes/**'];
 
 async function main() {
 	heading('Checking infrastructure');
 	const result = await ensureAll({ mode: 'auto', yes: false });
 	if (result.mode === 'docker') console.log(dim(result.note));
 
-	console.log(`\n${bold('Starting API, builder worker, dashboard, and package watchers…')}\n`);
-	await run('pnpm', ['-r', '--parallel', 'run', 'dev'], { cwd: ROOT });
+	const buildArgs = watch
+		? [...WATCH_PACKAGE_FILTERS.flatMap((filter) => ['--filter', filter]), '-r', 'run', 'build']
+		: ['-r', 'run', 'build'];
+	heading(watch ? 'Preparing typed workspace packages' : 'Building application');
+	await run('pnpm', buildArgs, { cwd: ROOT, stdio: 'pipe' });
+	ok(watch ? 'SDKs, plugins, and themes built' : 'Application built');
+
+	if (watch) {
+		console.log(`\n${bold('Watch mode enabled')}`);
+		console.log(`${dim('Dashboard: http://localhost:5173 · API: http://localhost:3000')}\n`);
+		await run('pnpm', ['-r', '--parallel', 'run', 'dev'], { cwd: ROOT });
+		return;
+	}
+
+	console.log(`\n${bold('Starting API, builder worker, and dashboard…')}\n`);
+	await run(
+		process.execPath,
+		[join(ROOT, 'scripts', 'start.mjs'), '--skip-infra', '--status-only', ...(debug ? ['--debug'] : [])],
+		{ cwd: ROOT }
+	);
 }
 
 main().catch((error) => {

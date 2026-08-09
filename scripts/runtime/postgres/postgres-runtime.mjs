@@ -38,6 +38,14 @@ function bins(installDir) {
 	return { postgres: join(bin, exe('postgres')), initdb: join(bin, exe('initdb')), pgCtl: join(bin, exe('pg_ctl')) };
 }
 
+function quoteIdentifier(value) {
+	return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function quoteLiteral(value) {
+	return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 async function pathExists(path) {
 	try {
 		await stat(path);
@@ -57,6 +65,7 @@ async function pathExists(path) {
 export function createPostgresRuntime({ target, runtimeDir, dataDir, logFile, pidFile, credentials, knownPort }) {
 	const { user, password, database } = credentials;
 	let resolvedPort = knownPort ?? null;
+	let initializedThisRun = false;
 
 	async function currentInstallDir() {
 		const entry = await serviceManifest('postgres');
@@ -141,6 +150,27 @@ export function createPostgresRuntime({ target, runtimeDir, dataDir, logFile, pi
 			// database without a psql/createdb binary in the distribution.
 			await run(postgres, ['--single', '-D', dataDir, '-c', 'listen_addresses=', 'postgres'], {
 				input: `CREATE DATABASE ${database} OWNER ${user};\n`,
+				stdio: 'pipe'
+			});
+			initializedThisRun = true;
+		},
+
+		/**
+		 * Makes an existing portable cluster follow DATABASE_URL after an
+		 * interrupted first setup. Single-user mode changes only the role
+		 * password and preserves every database and table in the cluster.
+		 */
+		async reconcileCredentials() {
+			if (initializedThisRun || !(await pathExists(join(dataDir, 'PG_VERSION')))) return;
+
+			const installDir = await currentInstallDir();
+			if (!installDir) throw new Error('PostgreSQL is not installed yet — call install() first.');
+
+			if (await readOwnedPid(pidFile)) await this.stop();
+
+			const { postgres } = bins(installDir);
+			await run(postgres, ['--single', '-D', dataDir, '-c', 'listen_addresses=', 'postgres'], {
+				input: `ALTER ROLE ${quoteIdentifier(user)} WITH PASSWORD ${quoteLiteral(password)};\n`,
 				stdio: 'pipe'
 			});
 		},

@@ -33,13 +33,19 @@ export function run(command, args, { cwd, env, stdio = 'inherit', input } = {}) 
 			})
 		);
 
-		let stderr = '';
-		if (stdio === 'pipe') child.stderr?.on('data', (chunk) => (stderr += chunk));
+		let output = '';
+		if (stdio === 'pipe') {
+			const retain = (chunk) => {
+				output = `${output}${chunk}`.slice(-20_000);
+			};
+			child.stdout?.on('data', retain);
+			child.stderr?.on('data', retain);
+		}
 
 		child.on('error', reject);
 		child.on('exit', (code) => {
 			if (code === 0) resolve();
-			else reject(new Error(`${command} exited with code ${code}${stderr ? `\n${stderr}` : ''}`));
+			else reject(new Error(`${command} exited with code ${code}${output ? `\n${output}` : ''}`));
 		});
 
 		if (input !== undefined) {
