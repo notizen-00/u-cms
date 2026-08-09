@@ -9,6 +9,10 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "//dev": "Root `pnpm dev` entry. Starts the worker too — without it a Publish is accepted and the site never builds. Only the API watches: deleteOutDir would make two `nest start --watch` processes wipe each other's dist.",
+    "dev": "pnpm run \"/^dev:(api|worker)$/\"",
+    "dev:api": "nest start --watch",
+    "dev:worker": "ts-node -r tsconfig-paths/register src/main-worker.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

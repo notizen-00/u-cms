@@ -1,0 +1,231 @@
+# Full Unej CMS stack: `docker compose up -d` from this directory and nothing
+# else is required — Postgres, Redis, MinIO, migrations, API, builder worker,
+# dashboard, and nginx all come up in dependency order.
+#
+# Every setting below has a working default, so the file runs with no `.env` at
+# all. Copy `.env.example` to `.env` only when you want to change ports or
+# credentials (Compose reads that file automatically).
+#
+# The explicit project name keeps volume names stable no matter which directory
+# you run from. NOTE: this file used to live in `deploy/`, where Compose derived
+# the project name `deploy`; volumes from such a stack are still on disk as
+# `deploy_postgres_data` etc. and are NOT reused here. See README for how to
+# carry that data over if you need it.
+name: unej-cms
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-unej_cms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unej_cms}
+      POSTGRES_DB: ${POSTGRES_DB:-unej_cms}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-unej_cms} -d ${POSTGRES_DB:-unej_cms}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      # Host port 6380 by default: a pre-existing native Windows
+      # redis-server.exe (v3.0.504) already occupies 6379 on the original
+      # development machine, unrelated to this project. Override REDIS_PORT
+      # in .env if 6379 is free for you.
+      - '${REDIS_PORT:-6380}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    # Not gated behind a profile: MediaStorageService.onModuleInit (backend)
+    # connects to MinIO unconditionally at boot (makeBucket/setBucketPolicy),
+    # so `api`/`builder` crash-loop on startup if MinIO isn't running.
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-unej_cms}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot schema migration. Running it as its own service — rather than
+  # letting every backend container migrate on boot — means `api` and `builder`
+  # cannot race each other for the migration lock, and a failed migration stops
+  # the rollout instead of surfacing as two crash-looping services.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-unej_cms}:${POSTGRES_PASSWORD:-unej_cms}@postgres:5432/${POSTGRES_DB:-unej_cms}
+    command: ['node', 'dist/database/migrate.js']
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    # Overrides the image's default CMD, which also migrates — convenient when
+    # running the image standalone, redundant here now that `migrate` owns that
+    # step and this service is gated on it finishing.
+    command: ['node', 'dist/main.js']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-unej_cms}:${POSTGRES_PASSWORD:-unej_cms}@postgres:5432/${POSTGRES_DB:-unej_cms}
+      REDIS_URL: redis://redis:6379
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-unej_cms_session}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      # Optional shared secret for POST /setup/init (header X-Setup-Token).
+      # Set it in .env when the instance is reachable before setup completes.
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      BUILD_OUTPUT_DIR: /sites
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
+      # Both of these are baked into HTML that a *visitor's* browser loads, so
+      # they must be reachable from outside the compose network. Left unset,
+      # AppConfigService falls back to the in-network `http://minio:9000`,
+      # which resolves nowhere in a browser and renders every uploaded image
+      # on a published site as broken.
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:3000}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    volumes:
+      - site_output:/sites
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  builder:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    command: ['node', 'dist/main-worker.js']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-unej_cms}:${POSTGRES_PASSWORD:-unej_cms}@postgres:5432/${POSTGRES_DB:-unej_cms}
+      REDIS_URL: redis://redis:6379
+      BUILD_OUTPUT_DIR: /sites
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+    volumes:
+      - site_output:/sites
+
+  dashboard:
+    build:
+      context: ./apps/dashboard
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Adapter-node reads form actions before forwarding them to the API.
+      # Covers Page Builder content and the existing 10 MB media upload.
+      BODY_SIZE_LIMIT: 16M
+      # SvelteKit adapter-node same-origin check for form actions; must match
+      # the public URL the admin app is reached at (nginx admin.conf below).
+      ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8081}
+      # Service name on the compose network, not the host-facing api port.
+      PUBLIC_API_URL: http://api:3000
+      # Host:port nginx's public static-site server listens on (host-facing,
+      # since "Visit Site" links are opened by the admin's own browser).
+      PUBLIC_SITE_HOST: ${PUBLIC_SITE_HOST:-localhost:8080}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    ports:
+      # Public static sites (built by `builder`, served from site_output).
+      - '${PUBLIC_SITE_PORT:-8080}:80'
+      # Admin dashboard, reverse-proxied separately from public sites per
+      # docs/PRD-ADMIN.md §"Deployment".
+      - '${ADMIN_PORT:-8081}:81'
+    volumes:
+      - site_output:/sites:ro
+      # Overwrites the image's own conf.d/default.conf (server_name localhost,
+      # docroot /usr/share/nginx/html) — that stock file otherwise wins over
+      # public.conf for any request with a "localhost" Host header, since
+      # nginx prefers an exact server_name match over public.conf's `_`
+      # catch-all regardless of file load order, silently 404-ing everything.
+      - ./deploy/nginx/public.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/admin.conf:/etc/nginx/conf.d/admin.conf:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  # Named volume (not a Windows bind mount): the atomic symlink deploy in
+  # AtomicDeployService needs POSIX rename/symlink semantics from the Docker
+  # Linux VM filesystem, which a bind mount onto NTFS cannot reliably provide.
+  site_output:

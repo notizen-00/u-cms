@@ -1,7 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // `deleteOutDir` (nest-cli.json) wipes dist at the start of every build,
+    // but the incremental build info inherited from tsconfig.json lives
+    // *outside* dist — so on the second build tsc still believes the outputs
+    // it just deleted are current, emits nothing, and `nest build` exits 0
+    // with an empty dist. Editors and typechecks keep their own incremental
+    // cache from tsconfig.json; only the emitting build opts out.
+    "incremental": false
   },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "drizzle.config.ts"]
 }

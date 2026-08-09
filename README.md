@@ -2,6 +2,85 @@
 
 Headless CMS platform untuk universitas, fakultas, instansi pemerintahan, dan organisasi — alternatif WordPress yang lebih aman, cepat, dan mudah dipelihara. Mendukung multi-website dari satu instance.
 
+## Instalasi
+
+Ada dua jalur. Pilih **satu** — keduanya menghasilkan instance yang sama.
+
+### Jalur 1 — Docker (semuanya dalam container)
+
+Butuh Docker Desktop / Docker Engine. Tidak perlu Node, pnpm, PostgreSQL, apa pun.
+
+```sh
+docker compose up -d
+```
+
+Selesai. Perintah itu membangun image, menjalankan Postgres + Redis + MinIO, menerapkan migrasi database, lalu menyalakan API, builder worker, dashboard, dan nginx dalam urutan yang benar.
+
+| Layanan | URL |
+| --- | --- |
+| Dashboard admin | http://localhost:8081 |
+| Website publik (hasil build) | http://localhost:8080 |
+| API | http://localhost:3000 |
+| MinIO console | http://localhost:9001 |
+
+Semua port dan kredensial punya default yang berfungsi. Untuk mengubahnya, salin [`.env.example`](.env.example) ke `.env` — Compose membacanya otomatis.
+
+```sh
+docker compose logs -f     # ikuti log
+docker compose down        # hentikan (data tetap tersimpan di volume)
+docker compose down -v     # hentikan dan hapus semua data
+```
+
+> **Pindah dari `deploy/docker-compose.yml`.** File itu sekarang ada di root repo supaya `docker compose up -d` bisa dijalankan tanpa `cd`. Nama project ikut berubah (`deploy` → `unej-cms`), jadi volume lama Anda tidak terpakai lagi. Isinya masih ada sebagai `deploy_postgres_data` dkk; jalankan `docker volume ls` untuk melihatnya. Cara paling mudah: mulai dari nol dan ulangi wizard `/setup`.
+
+### Jalur 2 — Native (aplikasi jalan langsung di mesin Anda)
+
+Butuh **Node 22+**. pnpm dipasang otomatis lewat corepack kalau belum ada.
+
+```sh
+pnpm setup
+```
+
+Satu perintah, dan skrip itu mengerjakan semuanya:
+
+1. Memeriksa Node dan pnpm.
+2. Membuat `.env` dari tiap `.env.example` (file yang sudah ada tidak disentuh).
+3. Memeriksa PostgreSQL, Redis, dan MinIO di port yang tertulis pada `apps/backend/.env`. **Yang sudah berjalan dipakai apa adanya** — Postgres bawaan Laragon, Homebrew, atau systemd tidak perlu diganti. Yang belum ada ditawarkan untuk dinyalakan lewat Docker.
+4. `pnpm install`.
+5. Membangun seluruh workspace, lalu memverifikasi output-nya benar-benar ada.
+6. Menerapkan migrasi database.
+
+Setelah itu:
+
+```sh
+pnpm dev      # mode pengembangan: API + builder worker + dashboard + watcher paket
+pnpm start    # mode produksi: tiga proses yang sama, dari hasil build
+```
+
+Dashboard dev ada di http://localhost:5173 (`pnpm dev` memakai Vite; `pnpm start` memakai adapter-node di port yang sama).
+
+Flag yang tersedia kalau Anda perlu kendali lebih:
+
+```sh
+pnpm setup --yes            # tanpa pertanyaan interaktif (CI)
+pnpm setup --skip-infra     # jangan periksa/menyalakan Postgres, Redis, MinIO
+pnpm setup --skip-build     # jangan build (otomatis melewati migrasi juga)
+pnpm setup --skip-migrate   # jangan jalankan migrasi
+```
+
+Kalau Anda hanya butuh layanan pendukungnya saja di Docker sementara aplikasinya native:
+
+```sh
+pnpm infra:up      # postgres + redis + minio
+pnpm infra:down
+```
+
+### Setelah instalasi (kedua jalur)
+
+Buka dashboard. Instance kosong akan mengarahkan Anda ke `/setup` untuk membuat super admin dan website pertama.
+
+Kalau instance sudah bisa diakses publik sebelum langkah ini selesai, isi `SETUP_TOKEN` supaya `/setup` tidak bisa diklaim orang lain.
+
 ## Struktur monorepo
 
 ```
@@ -10,9 +89,10 @@ apps/
   dashboard/   SvelteKit — admin dashboard (BFF ke backend)
   builder/     (reserved)
 packages/sdk/  Kontrak SDK untuk plugin & tema (core, auth, content, media, events, plugin, storage, theme, ui)
-plugins/       Plugin resmi (mis. form-builder)
-themes/        Tema resmi (default, premium)
-deploy/        docker-compose + konfigurasi nginx
+plugins/       Plugin resmi (mis. page-builder, form-builder, auto-avif)
+themes/        Tema resmi (default, premium, faculty, university)
+scripts/       Installer native (`pnpm setup`) dan process runner (`pnpm start`)
+deploy/        Konfigurasi nginx untuk stack Docker
 ```
 
 ## Stack
@@ -21,42 +101,30 @@ deploy/        docker-compose + konfigurasi nginx
 - **Dashboard**: SvelteKit 5, Tailwind CSS v4
 - **Tooling**: pnpm workspaces, TypeScript, tsup, Vitest
 
-## Menjalankan secara lokal
+## Konfigurasi
 
-Butuh PostgreSQL, Redis, dan MinIO. Cara tercepat pakai Docker Compose:
+Tiap jalur membaca file yang berbeda — ini sumber kebingungan yang paling sering:
 
-```sh
-cd deploy
-docker compose up -d postgres redis minio
-```
+| File | Dibaca oleh |
+| --- | --- |
+| [`.env`](.env.example) (root) | Docker Compose saja — port dan kredensial container |
+| [`apps/backend/.env`](apps/backend/.env.example) | API dan builder worker saat jalan native |
+| [`apps/dashboard/.env`](apps/dashboard/.env.example) | Dashboard saat jalan native |
 
-Lalu instal dependensi dan jalankan semua app dalam mode dev:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-Setiap app punya `.env.example` sendiri (`apps/backend/.env.example`, `apps/dashboard/.env.example`) — salin ke `.env` dan sesuaikan sebelum menjalankan.
-
-Saat pertama kali dijalankan, dashboard akan mengarahkan ke `/setup` untuk membuat super admin dan website pertama.
-
-## Deploy dengan Docker Compose
-
-```sh
-cd deploy
-docker compose up -d --build
-```
-
-Ini menjalankan seluruh stack (Postgres, Redis, MinIO, API, builder worker, dashboard, nginx). Lihat [`deploy/docker-compose.yml`](deploy/docker-compose.yml) untuk detail port dan environment variable.
+Semuanya di-generate oleh `pnpm setup` dan tidak masuk git.
 
 ## Skrip root
 
 ```sh
+pnpm setup       # installer native (idempoten — aman dijalankan ulang)
+pnpm dev         # semua app dalam mode dev (paralel)
+pnpm start       # semua app dari hasil build
 pnpm build       # build semua package/app
-pnpm dev         # jalankan semua app dalam mode dev (paralel)
 pnpm typecheck   # typecheck semua package/app
 pnpm test        # jalankan test (vitest)
+pnpm db:migrate  # terapkan migrasi database
+pnpm infra:up    # nyalakan postgres + redis + minio via Docker
+pnpm docker:up   # bangun dan jalankan seluruh stack dalam Docker
 ```
 
 ## Dokumentasi lanjutan

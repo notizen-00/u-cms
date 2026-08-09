@@ -3,13 +3,26 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "setup": "node scripts/install.mjs",
+    "start": "node scripts/start.mjs",
     "build": "pnpm -r run build",
     "dev": "pnpm -r --parallel run dev",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "pnpm -r run clean"
+    "clean": "pnpm -r run clean",
+    "db:migrate": "pnpm --filter unej-cms exec node dist/database/migrate.js",
+    "db:generate": "pnpm --filter unej-cms run db:generate",
+    "db:studio": "pnpm --filter unej-cms run db:studio",
+    "infra:up": "docker compose up -d postgres redis minio",
+    "infra:down": "docker compose stop postgres redis minio",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
