@@ -41,3 +41,8 @@ export function canManageMembers(user: AuthUser | null): boolean {
 export function canManageUsers(user: AuthUser | null): boolean {
 	return !!user?.isSuperAdmin;
 }
+
+/** Theme screenshots are a platform-level catalog concern, not tied to any one site — super_admin only, matching the backend's SuperAdminGuard on the upload/remove routes. */
+export function canManageThemes(user: AuthUser | null): boolean {
+	return !!user?.isSuperAdmin;
+}

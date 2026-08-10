@@ -1,29 +1,12 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Media, MediaListResult, MediaTypeFilter } from '$lib/types';
 import { apiFetch, apiUpload } from './client';
+import { normalizeStorageUrl } from './storage-url';
 
 type MinimalEvent = Pick<RequestEvent, 'fetch' | 'cookies'>;
 
-/**
- * The backend returns `url` pointing at MinIO's internal Docker hostname (e.g.
- * `http://minio:9000/...`), which only resolves inside the compose network — the
- * browser can't reach it. Rewrite to `localhost` (same port/path) so uploaded
- * files actually load for the admin browsing from the host machine.
- */
-function normalizeMediaUrl(url: string): string {
-	try {
-		const parsed = new URL(url);
-		if (parsed.hostname === 'minio') {
-			parsed.hostname = 'localhost';
-		}
-		return parsed.toString();
-	} catch {
-		return url;
-	}
-}
-
 function normalizeMedia(media: Media): Media {
-	return { ...media, url: normalizeMediaUrl(media.url) };
+	return { ...media, url: normalizeStorageUrl(media.url) };
 }
 
 export interface ListMediaParams {

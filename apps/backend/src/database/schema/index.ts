@@ -14,6 +14,7 @@ export * from './sessions.schema';
 export * from './site-plugins.schema';
 export * from './sites.schema';
 export * from './tags.schema';
+export * from './theme-overrides.schema';
 export * from './user-site-roles.schema';
 export * from './users.schema';
 export * from './wordpress-imports.schema';

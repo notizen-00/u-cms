@@ -182,6 +182,7 @@
 		{#if user.isSuperAdmin}
 			{@render navLink('/sites', 'Site', Globe2, true)}
 			{@render navLink('/users', 'Users', Users)}
+			{@render navLink('/themes', 'Tema', Palette)}
 		{/if}
 	</nav>
 

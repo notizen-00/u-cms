@@ -61,6 +61,12 @@ export class MediaStorageService implements OnModuleInit {
     return `sites/${siteId}/${year}/${month}/${randomUUID()}${slug ? `-${slug}` : ''}${ext}`;
   }
 
+  /** Themes aren't site-scoped (see modules/themes/theme-registry.ts), so their screenshot lives under its own top-level prefix instead of `sites/<siteId>/...`. */
+  buildThemeScreenshotKey(themeId: string, originalName: string): string {
+    const ext = extname(originalName).toLowerCase();
+    return `themes/${themeId}/screenshot-${randomUUID()}${ext}`;
+  }
+
   async upload(key: string, buffer: Buffer, mimeType: string): Promise<void> {
     await this.client.putObject(
       this.config.minioBucket,

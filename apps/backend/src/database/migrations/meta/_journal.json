@@ -78,6 +78,13 @@
       "when": 1786340283219,
       "tag": "0010_fuzzy_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786350957406,
+      "tag": "0011_furry_paibok",
+      "breakpoints": true
     }
   ]
 }
