@@ -377,7 +377,7 @@ export const layoutLayout = defineLayout<string>({
       <% if (it.site.logoUrl) { %><img src="<%= it.site.logoUrl %>" alt="<%= it.site.name %>"><% } %>
       <span><%= it.site.name %></span>
     </a>
-    <h1>KONTOLL</h1>
+
     <nav class="main-nav">
       <% if (it.menus.primary && it.menus.primary.length > 0) { %>
       <%

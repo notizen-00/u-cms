@@ -96,6 +96,31 @@ Skrip ini membangun tema sekali, lalu merender layout-nya (home, `/news/`, detai
 
 Buka `http://localhost:4310/` (atau port yang dipakai) — daftar route yang tersedia dicetak saat server menyala.
 
+### Menerapkan perubahan tema ke instance dev (native)
+
+`pnpm theme:dev` di atas cuma preview mandiri — tidak dipakai oleh dashboard/API beneran. Kalau Anda mengedit tema (mis. `themes/premium`) dan mau perubahannya muncul di instance native yang sedang berjalan (`pnpm dev` / `pnpm dev:watch`), perlu tiga langkah, karena backend meng-*import* tema sebagai package (`@unej-cms/theme-premium` dari `dist/`, bukan baca `src/` langsung — lihat `apps/backend/src/modules/themes/theme-registry.ts`):
+
+1. **Rebuild package tema.**
+   - Dengan `pnpm dev:watch`: otomatis — setiap workspace di `themes/**` punya script `dev` (`tsup --watch`) yang jalan paralel dan langsung rebuild `dist/index.js` tiap file di `themes/<slug>/src` disimpan.
+   - Dengan `pnpm dev` (tanpa watcher): manual — `pnpm --filter @unej-cms/theme-<slug> run build`, baru jalankan ulang `pnpm dev`.
+
+2. **Restart proses `api` dan `worker`.** Keduanya meng-*import* modul tema sekali saat start dan meng-cache-nya di memory Node:
+   - `dev:api` (`nest start --watch`) hanya mem-watch `apps/backend/src/**/*.ts` — perubahan pada `dist/` package tema di luar itu tidak terdeteksi.
+   - `dev:worker` (`ts-node ... main-worker.ts`) malah tidak punya watcher sama sekali.
+
+   Jadi setelah dist tema ter-*update*, restart manual tetap perlu:
+
+   ```sh
+   # paling gampang — restart semuanya
+   # Ctrl+C pada terminal `pnpm dev:watch`, lalu jalankan lagi
+
+   # atau restart api/worker saja, tanpa ganggu dashboard/theme-watcher lain
+   pnpm --filter unej-cms run dev:api
+   pnpm --filter unej-cms run dev:worker
+   ```
+
+3. **Trigger rebuild situs yang sudah pernah di-*publish*.** Output statis tiap situs tersimpan dari hasil build sebelumnya dan tidak otomatis re-render hanya karena API restart. Buka **Site → Theme** di dashboard lalu **Save** lagi (walau tidak ada yang diubah) — ini meng-antre-kan job build baru (`buildProducer.enqueue()` di `themes.service.ts`) yang me-render ulang situs pakai kode tema terbaru.
+
 ## Struktur monorepo
 
 ```
