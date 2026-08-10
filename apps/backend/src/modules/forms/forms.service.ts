@@ -63,6 +63,20 @@ export class FormsService {
       .orderBy(desc(formSubmissions.createdAt));
   }
 
+  async removeSubmission(siteId: string, formId: string, submissionId: string) {
+    await this.getOrThrow(siteId, formId);
+    await this.db
+      .delete(formSubmissions)
+      .where(
+        and(
+          eq(formSubmissions.id, submissionId),
+          eq(formSubmissions.formId, formId),
+          eq(formSubmissions.siteId, siteId),
+        ),
+      );
+    return { success: true };
+  }
+
   async submit(siteId: string, formId: string, payload: SubmitFormDto) {
     const form = await this.getOrThrow(siteId, formId);
 

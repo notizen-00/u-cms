@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import DataTable from '$lib/components/app/DataTable.svelte';
 	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
@@ -13,10 +14,18 @@
 
 	let deleteTarget = $state<Site | null>(null);
 	let confirmOpen = $state(false);
+	let selected = $state(new Set<string>());
+	let bulkDeleteOpen = $state(false);
+	let bulkIds = $state<string[]>([]);
 
 	function askDelete(site: Site) {
 		deleteTarget = site;
 		confirmOpen = true;
+	}
+
+	function askBulkDelete(ids: string[]) {
+		bulkIds = ids;
+		bulkDeleteOpen = true;
 	}
 
 	const columns = [
@@ -45,9 +54,23 @@
 		searchFn={(site, q) => site.name.toLowerCase().includes(q) || site.slug.toLowerCase().includes(q)}
 		searchPlaceholder="Cari nama atau slug..."
 		emptyMessage="Belum ada site."
+		selectable
+		bind:selected
+		onBulkDelete={askBulkDelete}
 	>
 		{#snippet row(site: Site)}
 			<TableRow>
+				<TableCell>
+					<Checkbox
+						checked={selected.has(site.id)}
+						onCheckedChange={(checked: boolean) => {
+							const next = new Set(selected);
+							if (checked) next.add(site.id);
+							else next.delete(site.id);
+							selected = next;
+						}}
+					/>
+				</TableCell>
 				<TableCell>
 					<a href="/sites/{site.id}" class="font-medium hover:underline">{site.name}</a>
 				</TableCell>
@@ -75,3 +98,11 @@
 		action="/sites/{deleteTarget.id}?/delete"
 	/>
 {/if}
+
+<ConfirmDialog
+	bind:open={bulkDeleteOpen}
+	title="Hapus {bulkIds.length} site?"
+	description="Semua berita, halaman, dan riwayat build site-site ini akan ikut terhapus. Tindakan ini tidak bisa dibatalkan."
+	action="?/bulkDelete"
+	hiddenFields={{ ids: bulkIds }}
+/>

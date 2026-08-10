@@ -20,3 +20,8 @@ export function uploadWordpressImport(
 ): Promise<WordpressImport> {
 	return apiUpload<WordpressImport>(event, `/sites/${siteId}/wordpress-import`, formData);
 }
+
+/** Removes only the history row — content already imported by that run is untouched. */
+export function deleteWordpressImport(event: MinimalEvent, siteId: string, id: string): Promise<void> {
+	return apiFetch(event, `/sites/${siteId}/wordpress-import/${id}`, { method: 'DELETE' });
+}

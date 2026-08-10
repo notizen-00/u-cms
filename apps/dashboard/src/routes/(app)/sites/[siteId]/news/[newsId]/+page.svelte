@@ -83,7 +83,7 @@
 		return async ({ result, update }) => {
 			submitting = false;
 			if (result.type === 'success') toast.success('Perubahan disimpan.');
-			await update();
+			await update({ reset: false });
 		};
 	}}
 >

@@ -59,5 +59,19 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
+	},
+
+	bulkDelete: async (event) => {
+		const { siteId } = event.params;
+		const formData = await event.request.formData();
+		const ids = formData.getAll('ids').map(String);
+
+		try {
+			await Promise.all(ids.map((id) => deleteMenu(event, siteId, id)));
+		} catch (err) {
+			if (err instanceof ApiError) return fail(err.status || 400, { message: err.message });
+			throw err;
+		}
+		return { success: true };
 	}
 };

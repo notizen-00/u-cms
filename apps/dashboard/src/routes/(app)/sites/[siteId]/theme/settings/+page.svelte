@@ -48,7 +48,7 @@
 					return async ({ result, update }) => {
 						submitting = false;
 						if (result.type === 'success') toast.success('Pengaturan tema disimpan. Build baru sedang diproses.');
-						await update();
+						await update({ reset: false });
 					};
 				}}
 			>

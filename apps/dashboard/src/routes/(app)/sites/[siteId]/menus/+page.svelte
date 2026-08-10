@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Select } from '$lib/components/ui/select';
@@ -9,6 +10,7 @@
 	import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import DataTable from '$lib/components/app/DataTable.svelte';
+	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import { canManageSite } from '$lib/permissions';
 	import Plus from '@lucide/svelte/icons/plus';
 	import type { Menu } from '$lib/types';
@@ -21,6 +23,14 @@
 
 	let creating = $state(false);
 	let pendingDeleteId = $state<string | null>(null);
+	let selected = $state(new Set<string>());
+	let bulkDeleteOpen = $state(false);
+	let bulkIds = $state<string[]>([]);
+
+	function askBulkDelete(ids: string[]) {
+		bulkIds = ids;
+		bulkDeleteOpen = true;
+	}
 
 	function locationLabel(locationId: string | null) {
 		if (!locationId) return 'Tidak ditempatkan';
@@ -79,9 +89,30 @@
 		</Card>
 	{/if}
 
-	<DataTable items={data.menus} {columns} rowKey={(item) => item.id} emptyMessage="Belum ada menu.">
+	<DataTable
+		items={data.menus}
+		{columns}
+		rowKey={(item) => item.id}
+		emptyMessage="Belum ada menu."
+		selectable={canManage}
+		bind:selected
+		onBulkDelete={askBulkDelete}
+	>
 		{#snippet row(item: Menu)}
 			<TableRow>
+				{#if canManage}
+					<TableCell>
+						<Checkbox
+							checked={selected.has(item.id)}
+							onCheckedChange={(checked: boolean) => {
+								const next = new Set(selected);
+								if (checked) next.add(item.id);
+								else next.delete(item.id);
+								selected = next;
+							}}
+						/>
+					</TableCell>
+				{/if}
 				<TableCell>
 					<a href="/sites/{data.site.id}/menus/{item.id}" class="font-medium hover:underline">{item.name}</a>
 				</TableCell>
@@ -114,3 +145,11 @@
 		{/snippet}
 	</DataTable>
 </div>
+
+<ConfirmDialog
+	bind:open={bulkDeleteOpen}
+	title="Hapus {bulkIds.length} menu?"
+	description="Menu-menu ini beserta seluruh itemnya akan dihapus permanen."
+	action="?/bulkDelete"
+	hiddenFields={{ ids: bulkIds }}
+/>

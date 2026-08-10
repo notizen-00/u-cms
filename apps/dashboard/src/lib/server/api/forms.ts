@@ -43,3 +43,12 @@ export function listSubmissions(
 ): Promise<FormSubmission[]> {
 	return apiFetch<FormSubmission[]>(event, `/sites/${siteId}/forms/${formId}/submissions`);
 }
+
+export function deleteSubmission(
+	event: MinimalEvent,
+	siteId: string,
+	formId: string,
+	submissionId: string
+): Promise<void> {
+	return apiFetch(event, `/sites/${siteId}/forms/${formId}/submissions/${submissionId}`, { method: 'DELETE' });
+}

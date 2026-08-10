@@ -56,4 +56,14 @@ export class FormsController {
   submissions(@Param('siteId') siteId: string, @Param('formId') formId: string) {
     return this.formsService.listSubmissions(siteId, formId);
   }
+
+  @Delete(':formId/submissions/:submissionId')
+  @UseGuards(SiteAdminGuard)
+  removeSubmission(
+    @Param('siteId') siteId: string,
+    @Param('formId') formId: string,
+    @Param('submissionId') submissionId: string,
+  ) {
+    return this.formsService.removeSubmission(siteId, formId, submissionId);
+  }
 }

@@ -48,4 +48,13 @@ export class WordpressImportService {
     }
     return importRow;
   }
+
+  /** Removes only the history/log row — content already created by this run (news, pages, media, categories, tags) is untouched. */
+  async remove(siteId: string, id: string) {
+    await this.findOne(siteId, id);
+    await this.db
+      .delete(wordpressImports)
+      .where(and(eq(wordpressImports.siteId, siteId), eq(wordpressImports.id, id)));
+    return { success: true };
+  }
 }

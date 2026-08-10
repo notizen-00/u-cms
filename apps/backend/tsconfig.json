@@ -21,5 +21,17 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
+  },
+  // `nest build` (tsc) always type-checks every file matched by this
+  // config's default `include`, so it picks up ambient global augmentations
+  // like src/common/types/express.d.ts automatically. ts-node's default
+  // `files: false` instead only compiles files actually reached by
+  // require()/import from the entrypoint — an ambient .d.ts with no
+  // importers is never reached, so `Request.sessionToken` etc. silently
+  // don't exist under `dev:worker`/`start:worker:dev`/`db:migrate:runtime`
+  // (all three run via `ts-node -r tsconfig-paths/register`) even though
+  // the exact same file compiles cleanly under `nest build`/`nest start`.
+  "ts-node": {
+    "files": true
   }
 }

@@ -2,11 +2,14 @@
 	import { toast } from 'svelte-sonner';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Alert } from '$lib/components/ui/alert';
 	import DataTable from '$lib/components/app/DataTable.svelte';
+	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import { canManageSite } from '$lib/permissions';
 	import { formatDate } from '$lib/utils';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { WordpressImport, WordpressImportStatus } from '$lib/types';
 	import type { PageData } from './$types';
 
@@ -21,7 +24,35 @@
 	let uploadError = $state<string | null>(null);
 	let pollingId = $state<string | null>(null);
 
-	const columns = [{ label: 'File' }, { label: 'Status' }, { label: 'Hasil' }, { label: 'Diunggah' }];
+	let selected = $state(new Set<string>());
+	let deleteTarget = $state<WordpressImport | null>(null);
+	let deleteOpen = $state(false);
+	let bulkDeleteOpen = $state(false);
+	let bulkIds = $state<string[]>([]);
+
+	function askDelete(item: WordpressImport) {
+		deleteTarget = item;
+		deleteOpen = true;
+	}
+
+	function askBulkDelete(ids: string[]) {
+		bulkIds = ids;
+		bulkDeleteOpen = true;
+	}
+
+	function pruneDeleted(ids: string[]) {
+		const idSet = new Set(ids);
+		imports = imports.filter((row) => !idSet.has(row.id));
+		selected = new Set([...selected].filter((id) => !idSet.has(id)));
+	}
+
+	const columns = [
+		{ label: 'File' },
+		{ label: 'Status' },
+		{ label: 'Hasil' },
+		{ label: 'Diunggah' },
+		{ label: 'Aksi', class: 'text-right' }
+	];
 
 	const STATUS_LABEL: Record<WordpressImportStatus, string> = {
 		queued: 'Menunggu',
@@ -153,9 +184,29 @@
 
 	<div class="space-y-3">
 		<h2 class="text-sm font-semibold text-muted-foreground">Riwayat Import</h2>
-		<DataTable items={imports} {columns} rowKey={(row) => row.id} emptyMessage="Belum ada import.">
+		<DataTable
+			items={imports}
+			{columns}
+			rowKey={(row) => row.id}
+			emptyMessage="Belum ada import."
+			selectable
+			bind:selected
+			onBulkDelete={askBulkDelete}
+			bulkDeleteLabel="Hapus dari Riwayat"
+		>
 			{#snippet row(item: WordpressImport)}
 				<TableRow>
+					<TableCell>
+						<Checkbox
+							checked={selected.has(item.id)}
+							onCheckedChange={(checked: boolean) => {
+								const next = new Set(selected);
+								if (checked) next.add(item.id);
+								else next.delete(item.id);
+								selected = next;
+							}}
+						/>
+					</TableCell>
 					<TableCell class="font-medium">{item.sourceFileName}</TableCell>
 					<TableCell>
 						<Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>
@@ -164,8 +215,40 @@
 						{item.status === 'failed' ? (item.error ?? 'Terjadi kesalahan.') : statsSummary(item)}
 					</TableCell>
 					<TableCell class="text-sm text-muted-foreground">{formatDate(item.createdAt)}</TableCell>
+					<TableCell class="text-right">
+						<Button
+							variant="destructive"
+							size="icon"
+							onclick={() => askDelete(item)}
+							title="Hapus dari riwayat"
+						>
+							<Trash2 />
+						</Button>
+					</TableCell>
 				</TableRow>
 			{/snippet}
 		</DataTable>
 	</div>
 </div>
+
+{#if deleteTarget}
+	<ConfirmDialog
+		bind:open={deleteOpen}
+		title="Hapus dari riwayat?"
+		description="Ini hanya menghapus catatan riwayat import ini — berita, halaman, kategori, tag, dan media yang sudah berhasil diimpor TIDAK ikut terhapus."
+		confirmLabel="Hapus dari Riwayat"
+		action="?/delete"
+		hiddenFields={{ id: deleteTarget.id }}
+		onSuccess={() => pruneDeleted([deleteTarget!.id])}
+	/>
+{/if}
+
+<ConfirmDialog
+	bind:open={bulkDeleteOpen}
+	title="Hapus {bulkIds.length} riwayat import?"
+	description="Ini hanya menghapus catatan riwayat — konten yang sudah berhasil diimpor sebelumnya TIDAK ikut terhapus."
+	confirmLabel="Hapus dari Riwayat"
+	action="?/bulkDelete"
+	hiddenFields={{ ids: bulkIds }}
+	onSuccess={() => pruneDeleted(bulkIds)}
+/>

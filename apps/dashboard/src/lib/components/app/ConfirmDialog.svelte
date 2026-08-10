@@ -11,7 +11,8 @@
 		confirmLabel = 'Hapus',
 		action,
 		variant = 'destructive',
-		hiddenFields
+		hiddenFields,
+		onSuccess
 	}: {
 		open?: boolean;
 		title: string;
@@ -19,7 +20,10 @@
 		confirmLabel?: string;
 		action: string;
 		variant?: ButtonVariant;
-		hiddenFields?: Record<string, string>;
+		/** A `string[]` value renders one hidden input per element under the same `name` (read server-side via `formData.getAll(name)`) — used for bulk actions. */
+		hiddenFields?: Record<string, string | string[]>;
+		/** Called after a successful submit, right before the default `update()` reload — for callers that keep their own local copy of the list (e.g. merged with polling) and need to prune it themselves. */
+		onSuccess?: () => void;
 	} = $props();
 
 	let submitting = $state(false);
@@ -38,16 +42,23 @@
 			{action}
 			use:enhance={() => {
 				submitting = true;
-				return async ({ update }) => {
+				return async ({ result, update }) => {
 					submitting = false;
 					open = false;
+					if (result.type === 'success') onSuccess?.();
 					await update();
 				};
 			}}
 		>
 			{#if hiddenFields}
 				{#each Object.entries(hiddenFields) as [key, value] (key)}
-					<input type="hidden" name={key} {value} />
+					{#if Array.isArray(value)}
+						{#each value as v (v)}
+							<input type="hidden" name={key} value={v} />
+						{/each}
+					{:else}
+						<input type="hidden" name={key} {value} />
+					{/if}
 				{/each}
 			{/if}
 			<Dialog.Footer class="mt-2">

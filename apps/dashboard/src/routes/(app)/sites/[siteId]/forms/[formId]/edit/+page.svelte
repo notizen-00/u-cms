@@ -46,7 +46,7 @@
 			return async ({ result, update }) => {
 				submitting = false;
 				if (result.type === 'success') toast.success('Formulir disimpan.');
-				await update();
+				await update({ reset: false });
 			};
 		}}
 	>

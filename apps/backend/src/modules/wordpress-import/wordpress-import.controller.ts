@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -56,5 +57,11 @@ export class WordpressImportController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.wordpressImportService.create(siteId, user.id, file);
+  }
+
+  @Delete(':id')
+  @UseGuards(SiteAdminGuard)
+  remove(@Param('siteId') siteId: string, @Param('id') id: string) {
+    return this.wordpressImportService.remove(siteId, id);
   }
 }

@@ -2,9 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Alert } from '$lib/components/ui/alert';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import DataTable from '$lib/components/app/DataTable.svelte';
+	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import { canManageSite } from '$lib/permissions';
 	import { formatDate } from '$lib/utils';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -18,6 +20,14 @@
 	const columns = [{ label: 'Formulir' }, { label: 'Field' }, { label: 'Dibuat' }, { label: 'Aksi' }];
 
 	let pendingDeleteId = $state<string | null>(null);
+	let selected = $state(new Set<string>());
+	let bulkDeleteOpen = $state(false);
+	let bulkIds = $state<string[]>([]);
+
+	function askBulkDelete(ids: string[]) {
+		bulkIds = ids;
+		bulkDeleteOpen = true;
+	}
 </script>
 
 <svelte:head>
@@ -48,9 +58,30 @@
 			<Alert variant="destructive">{form.message}</Alert>
 		{/if}
 
-		<DataTable items={data.forms} {columns} rowKey={(item) => item.id} emptyMessage="Belum ada formulir.">
+		<DataTable
+			items={data.forms}
+			{columns}
+			rowKey={(item) => item.id}
+			emptyMessage="Belum ada formulir."
+			selectable={canManage}
+			bind:selected
+			onBulkDelete={askBulkDelete}
+		>
 			{#snippet row(item: CmsForm)}
 				<TableRow>
+					{#if canManage}
+						<TableCell>
+							<Checkbox
+								checked={selected.has(item.id)}
+								onCheckedChange={(checked: boolean) => {
+									const next = new Set(selected);
+									if (checked) next.add(item.id);
+									else next.delete(item.id);
+									selected = next;
+								}}
+							/>
+						</TableCell>
+					{/if}
 					<TableCell>
 						<a href="/sites/{data.site.id}/forms/{item.id}/edit" class="font-medium hover:underline">
 							{item.title}
@@ -97,3 +128,11 @@
 		</DataTable>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={bulkDeleteOpen}
+	title="Hapus {bulkIds.length} formulir?"
+	description="Formulir beserta seluruh kiriman pengunjungnya akan dihapus permanen."
+	action="?/bulkDelete"
+	hiddenFields={{ ids: bulkIds }}
+/>

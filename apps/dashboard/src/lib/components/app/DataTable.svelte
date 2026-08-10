@@ -3,9 +3,11 @@
 	import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '$lib/components/ui/table';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Search from '@lucide/svelte/icons/search';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	let {
 		items,
@@ -15,7 +17,11 @@
 		emptyMessage = 'Belum ada data.',
 		searchPlaceholder = 'Cari...',
 		searchFn,
-		pageSize = 20
+		pageSize = 20,
+		selectable = false,
+		selected = $bindable(new Set<string>()),
+		onBulkDelete,
+		bulkDeleteLabel = 'Hapus Terpilih'
 	}: {
 		items: T[];
 		rowKey: (item: T) => string;
@@ -26,6 +32,19 @@
 		/** Omit to hide the search box entirely (not every list needs one). */
 		searchFn?: (item: T, query: string) => boolean;
 		pageSize?: number;
+		/**
+		 * Renders a "select all on this page" checkbox column plus a bulk-action
+		 * bar. The caller's `row` snippet is still responsible for rendering the
+		 * matching per-row checkbox as its own leading `<TableCell>` — it should
+		 * read/write the same `selected` set (bound via `bind:selected`) so both
+		 * sides stay in sync without DataTable needing to inject markup into a
+		 * snippet it doesn't own.
+		 */
+		selectable?: boolean;
+		selected?: Set<string>;
+		/** Called with the selected ids when "Hapus Terpilih" is clicked. */
+		onBulkDelete?: (ids: string[]) => void;
+		bulkDeleteLabel?: string;
 	} = $props();
 
 	let search = $state('');
@@ -43,6 +62,18 @@
 	});
 
 	const paged = $derived(filtered.slice((page - 1) * pageSize, page * pageSize));
+
+	const pageIds = $derived(paged.map(rowKey));
+	const pageAllSelected = $derived(pageIds.length > 0 && pageIds.every((id) => selected.has(id)));
+
+	function toggleSelectPage(checked: boolean) {
+		const next = new Set(selected);
+		for (const id of pageIds) {
+			if (checked) next.add(id);
+			else next.delete(id);
+		}
+		selected = next;
+	}
 </script>
 
 <div class="space-y-3">
@@ -59,9 +90,37 @@
 		</div>
 	{/if}
 
+	{#if selectable && selected.size > 0}
+		<div class="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+			<span>{selected.size} item dipilih</span>
+			<div class="flex items-center gap-2">
+				<Button type="button" variant="outline" size="sm" onclick={() => (selected = new Set())}>
+					Batal
+				</Button>
+				<Button
+					type="button"
+					variant="destructive"
+					size="sm"
+					onclick={() => onBulkDelete?.([...selected])}
+				>
+					<Trash2 class="size-4" />
+					{bulkDeleteLabel}
+				</Button>
+			</div>
+		</div>
+	{/if}
+
 	<Table>
 		<TableHeader>
 			<TableRow>
+				{#if selectable}
+					<TableHead class="w-10">
+						<Checkbox
+							checked={pageAllSelected}
+							onCheckedChange={(checked: boolean) => toggleSelectPage(checked)}
+						/>
+					</TableHead>
+				{/if}
 				{#each columns as col (col.label)}
 					<TableHead class={col.class}>{col.label}</TableHead>
 				{/each}
@@ -72,7 +131,10 @@
 				{@render row(item)}
 			{:else}
 				<TableRow>
-					<TableCell colspan={columns.length} class="py-8 text-center text-muted-foreground">
+					<TableCell
+						colspan={columns.length + (selectable ? 1 : 0)}
+						class="py-8 text-center text-muted-foreground"
+					>
 						{items.length > 0 ? 'Tidak ada hasil yang cocok.' : emptyMessage}
 					</TableCell>
 				</TableRow>

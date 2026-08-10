@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Select } from '$lib/components/ui/select';
 	import { TableRow, TableCell } from '$lib/components/ui/table';
 	import DataTable from '$lib/components/app/DataTable.svelte';
+	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import StatusBadge from '$lib/components/app/StatusBadge.svelte';
 	import { formatDate } from '$lib/utils';
 	import { MANUAL_CONTENT_STATUSES, type ContentStatus, type NewsItem } from '$lib/types';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -33,8 +36,25 @@
 		{ label: 'Kategori & Tag' },
 		{ label: 'Status' },
 		{ label: 'Penulis' },
-		{ label: 'Diperbarui' }
+		{ label: 'Diperbarui' },
+		{ label: 'Aksi', class: 'text-right' }
 	];
+
+	let selected = $state(new Set<string>());
+	let deleteTarget = $state<NewsItem | null>(null);
+	let deleteOpen = $state(false);
+	let bulkDeleteOpen = $state(false);
+	let bulkIds = $state<string[]>([]);
+
+	function askDelete(item: NewsItem) {
+		deleteTarget = item;
+		deleteOpen = true;
+	}
+
+	function askBulkDelete(ids: string[]) {
+		bulkIds = ids;
+		bulkDeleteOpen = true;
+	}
 </script>
 
 <svelte:head>
@@ -64,9 +84,23 @@
 		searchFn={(item, q) => item.title.toLowerCase().includes(q)}
 		searchPlaceholder="Cari judul berita..."
 		emptyMessage="Belum ada berita."
+		selectable
+		bind:selected
+		onBulkDelete={askBulkDelete}
 	>
 		{#snippet row(item: NewsItem)}
 			<TableRow>
+				<TableCell>
+					<Checkbox
+						checked={selected.has(item.id)}
+						onCheckedChange={(checked: boolean) => {
+							const next = new Set(selected);
+							if (checked) next.add(item.id);
+							else next.delete(item.id);
+							selected = next;
+						}}
+					/>
+				</TableCell>
 				<TableCell>
 					<a href="/sites/{data.site.id}/news/{item.id}" class="font-medium hover:underline">{item.title}</a>
 				</TableCell>
@@ -87,7 +121,30 @@
 			<TableCell><StatusBadge status={item.status} /></TableCell>
 				<TableCell class="text-muted-foreground">{item.authorName ?? '-'}</TableCell>
 				<TableCell class="text-muted-foreground">{formatDate(item.updatedAt)}</TableCell>
+				<TableCell class="text-right">
+					<Button variant="destructive" size="icon" onclick={() => askDelete(item)} title="Hapus berita">
+						<Trash2 />
+					</Button>
+				</TableCell>
 			</TableRow>
 		{/snippet}
 	</DataTable>
 </div>
+
+{#if deleteTarget}
+	<ConfirmDialog
+		bind:open={deleteOpen}
+		title="Hapus {deleteTarget.title}?"
+		description="Berita ini akan dihapus permanen dan tidak bisa dipulihkan."
+		action="?/delete"
+		hiddenFields={{ id: deleteTarget.id }}
+	/>
+{/if}
+
+<ConfirmDialog
+	bind:open={bulkDeleteOpen}
+	title="Hapus {bulkIds.length} berita?"
+	description="Berita-berita ini akan dihapus permanen dan tidak bisa dipulihkan."
+	action="?/bulkDelete"
+	hiddenFields={{ ids: bulkIds }}
+/>

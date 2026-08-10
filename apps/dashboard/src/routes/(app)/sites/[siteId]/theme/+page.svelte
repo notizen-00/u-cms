@@ -80,7 +80,7 @@
 									return async ({ result, update }) => {
 										pendingThemeId = null;
 										if (result.type === 'success') toast.success(`Tema "${theme.name}" diterapkan.`);
-										await update();
+										await update({ reset: false });
 									};
 								}}
 							>
