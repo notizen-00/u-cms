@@ -48,7 +48,7 @@
 	{@html `<style>${tokensCss}:root{--primary:${theme.primaryColor};--secondary:${theme.secondaryColor};}${themeStyles}</style>`}
 </svelte:head>
 
-<header class="site-header" class:is-home={isHome}>
+<header class="site-header" class:is-home={isHome} class:not-home={!isHome}>
 	<div class="wrap top-bar">
 		<div class="badge-strip">
 	{#if logos.length > 0}
@@ -112,7 +112,7 @@
 				</div>
 			</div>
 			<div class="footer-col">
-				<h4>Tautan Cepat</h4>
+				<h3>Tautan Cepat</h3>
 				<ul>
 					{#if menus.footer && menus.footer.length > 0}
 						{#each menus.footer as item (item.label + item.url)}
@@ -134,9 +134,9 @@
 				</ul>
 			</div>
 			<div class="footer-col">
-				<h4>Kontak</h4>
+				<h3>Kontak</h3>
 				<ul>
-					<li>Kampus {site.name}</li>
+					<li>Kampuss {site.name}</li>
 					<li>Indonesia</li>
 				</ul>
 			</div>

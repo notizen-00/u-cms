@@ -1,6 +1,12 @@
 import { definePropertySchema, type PropertySchema } from "@unej-cms/sdk-ui";
 
-export const DEFAULT_PRIMARY_COLOR = "#0d9488";
+// #0d9488 (teal-500) measured ~3.7:1 against white/light backgrounds and
+// against white button text — both below WCAG AA's 4.5:1 for normal text.
+// teal-800 keeps the same hue but is dark enough to clear 4.5:1 in every
+// place the theme uses --primary as text-on-light or as a solid button fill
+// with white text (see .pill/.eyebrow/.section-head/.read-more/.info-icon in
+// sections.css, .cms-button in article.css).
+export const DEFAULT_PRIMARY_COLOR = "#115e59";
 export const DEFAULT_SECONDARY_COLOR = "#facc15";
 export const DEFAULT_HERO_EYEBROW = "Selamat Datang di Situs Resmi Kami";
 export const DEFAULT_HERO_HEADLINE = "Mencetak Lulusan Profesional, Berintegritas & Berdaya Saing Global";
@@ -57,6 +63,7 @@ export const settings: PropertySchema = definePropertySchema({
     label: "Video Latar Hero",
     description: "Video MP4 yang diputar otomatis (bisu, berulang) sebagai latar hero beranda.",
     accept: ["video/mp4", "video/webm"],
+    default: "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4",
   },
   heroVideoPoster: {
     type: "media",
@@ -72,6 +79,16 @@ export const settings: PropertySchema = definePropertySchema({
       url: { type: "media", label: "Gambar Logo" },
       label: { type: "string", label: "Nama (untuk alt text)", required: true },
     }),
+    default: [
+    {
+      url: "https://untidar.ac.id/wp-content/uploads/2024/05/Logo-BLU-Speed-218x218.png",
+      label: "Universitas Jember",
+    },
+    {
+      url: "https://icon2.cleanpng.com/20180713/ujz/kisspng-university-of-jember-sebelas-maret-university-univ-university-5b4949e02ac7b0.7918986215315296961752.jpg",
+      label: "Fakultas Kesehatan Masyarakat Universitas Jember",
+    },
+  ],
   },
   showLanguageSwitcher: {
     type: "boolean",

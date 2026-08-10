@@ -6,7 +6,7 @@
 	<section class="section">
 		<div class="section-head">
 			<div>
-				<span class="eyebrow">Arsip</span>
+				<span class="">Arsip</span>
 				<h2>Berita &amp; Pengumuman</h2>
 			</div>
 		</div>

@@ -61,11 +61,11 @@
 				</ol>
 			</nav>
 
-			{#each items.filter((item) => !item.href) as current}
+			<!-- {#each items.filter((item) => !item.href) as current}
 				<h1 class="faculty-page-hero-title">
 					{current.label}
 				</h1>
-			{/each}
+			{/each} -->
 		</div>
 	</section>
 {/snippet}

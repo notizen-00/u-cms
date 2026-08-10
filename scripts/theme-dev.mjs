@@ -423,7 +423,18 @@ async function main() {
 
 	const watchedDirs = [join(themeDir, 'src')];
 	if (existsSync(assetsDir)) watchedDirs.push(assetsDir);
-	const watchers = watchedDirs.map((dir) => watch(dir, { recursive: true }, () => scheduleRebuild()));
+	// Themes with a `generate` build step (faculty, university) write their
+	// own `*.generated.ts` output back into `src/` (see
+	// scripts/generate-svelte-sources.mjs) — without this filter, that write
+	// re-triggers this very watcher, which reruns the build, which writes the
+	// file again, forever. Real edits never use this suffix, so it's safe to
+	// ignore unconditionally.
+	const watchers = watchedDirs.map((dir) =>
+		watch(dir, { recursive: true }, (_event, filename) => {
+			if (filename && /\.generated\.\w+$/.test(filename)) return;
+			scheduleRebuild();
+		}),
+	);
 
 	server.listen(port, () => {
 		heading('Preview ready');

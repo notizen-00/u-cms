@@ -63,7 +63,7 @@ export const newsSingleLayout = defineLayout<string>({
   id: "news-single",
   name: "Detail Berita",
   description: "Tipografi artikel dengan meta kategori/tag.",
-  render: NewsSingleSource,
+  render: withBreadcrumb(NewsSingleSource),
 });
 
 export const pageLayout = defineLayout<string>({

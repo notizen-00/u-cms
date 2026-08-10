@@ -7,9 +7,25 @@
 		if (Number.isNaN(date.getTime())) return '';
 		return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 	}
-</script>
 
+
+	const breadcrumbs = [
+		{
+			label: 'Beranda',
+			href: '/'
+		},
+		{
+			label: 'Berita',
+			href: '/news/'
+		},
+		{
+			label: item.title
+		}
+	];
+</script>
+__BREADCRUMB_SNIPPET__
 <div class="wrap">
+{@render breadcrumb(breadcrumbs)}
 	<div class="article-header">
 		<h1>{item.title}</h1>
 		<div class="meta-row">

@@ -1,17 +1,214 @@
-.main-nav { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
-.main-nav .nav-item { position: relative; }
-.main-nav a, .main-nav .nav-item-label { display: inline-flex; align-items: center; gap: 4px; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--theme-foreground); transition: background .15s ease, color .15s ease; }
-.main-nav .nav-item-label { cursor: default; }
-.main-nav a:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
-.main-nav .sub-menu { display: none; position: absolute; top: 100%; left: 0; flex-direction: column; gap: 2px; background: var(--theme-background); border: 1px solid var(--theme-line); border-radius: 12px; padding: 8px; min-width: 220px; box-shadow: 0 20px 40px -24px rgba(11,21,38,.35); z-index: 50; }
-.main-nav .sub-menu .nav-item { width: 100%; }
-.main-nav .sub-menu .sub-menu { top: -8px; left: 100%; }
-.main-nav .nav-item:hover > .sub-menu, .main-nav .nav-item:focus-within > .sub-menu { display: flex; }
-.main-nav .has-children > a::after, .main-nav .has-children > .nav-item-label::after { content: "\25BE"; font-size: .6em; opacity: .7; }
+/* ========================================
+   MAIN NAVIGATION
+   ======================================== */
 
-/* Same is-home overlay as header.css — kept here since these rules target
-   .main-nav specifically, not the header chrome around it. */
-.site-header.is-home .main-nav a, .site-header.is-home .main-nav .nav-item-label { color: rgba(255,255,255,.92); }
-.site-header.is-home .main-nav a:hover { color: #fff; background: rgba(255,255,255,.14); }
-.site-header.is-home .main-nav .sub-menu a, .site-header.is-home .main-nav .sub-menu .nav-item-label { color: var(--theme-foreground); }
-.site-header.is-home .main-nav .sub-menu a:hover { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.main-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+
+.main-nav .nav-item {
+  position: relative;
+}
+
+/* ========================================
+   NAV ITEM BASE
+   ======================================== */
+
+.main-nav a,
+.main-nav .nav-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 12px 16px;
+  border-radius: 8px;
+
+  font-weight: 600;
+  font-size: 14px;
+
+  color: var(--theme-foreground);
+
+  text-decoration: none;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.main-nav .nav-item-label {
+  cursor: default;
+}
+
+/* ========================================
+   ARROW
+   ======================================== */
+
+.main-nav .has-children > a::after,
+.main-nav .has-children > .nav-item-label::after {
+  content: "▾";
+  font-size: 0.6em;
+  opacity: 0.7;
+}
+
+/* ========================================
+   DROPDOWN BASE
+   ======================================== */
+
+.main-nav .sub-menu {
+  display: none;
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  flex-direction: column;
+  gap: 2px;
+
+  min-width: 220px;
+  padding: 8px;
+
+  background: #fff;
+  border: 1px solid var(--theme-line);
+  border-radius: 12px;
+
+  box-shadow: 0 20px 40px -24px rgba(11, 21, 38, 0.35);
+
+  z-index: 50;
+}
+
+.main-nav .sub-menu .nav-item {
+  width: 100%;
+}
+
+/* ========================================
+   DROPDOWN ITEM
+   ======================================== */
+
+.main-nav .sub-menu a,
+.main-nav .sub-menu .nav-item-label {
+  display: inline-flex;
+  width: 100%;
+
+  color: #111827;
+}
+
+/* Dropdown hover */
+.main-nav .sub-menu a:hover,
+.main-nav .sub-menu .nav-item-label:hover {
+  color: var(--primary);
+
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* ========================================
+   NESTED DROPDOWN
+   ======================================== */
+
+.main-nav .sub-menu .sub-menu {
+  top: -8px;
+  left: 100%;
+}
+
+/* ========================================
+   SHOW DROPDOWN
+   ======================================== */
+
+.main-nav .nav-item:hover > .sub-menu,
+.main-nav .nav-item:focus-within > .sub-menu {
+  display: flex;
+}
+
+/* ========================================
+   HOME
+   ======================================== */
+
+/*
+ * Home:
+ * - Header transparan
+ * - Main navigation putih
+ * - Dropdown tetap putih dengan text hitam
+ */
+
+.site-header.is-home {
+  background: transparent;
+}
+
+.site-header.is-home .main-nav > .nav-item > a,
+.site-header.is-home .main-nav > .nav-item > .nav-item-label {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Main menu hover */
+.site-header.is-home .main-nav > .nav-item > a:hover,
+.site-header.is-home .main-nav > .nav-item > .nav-item-label:hover {
+  color: #fff;
+
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/*
+ * Home dropdown:
+ * Tetap hitam, jangan mewarisi warna putih
+ */
+
+.site-header.is-home .main-nav .sub-menu a,
+.site-header.is-home .main-nav .sub-menu .nav-item-label {
+  color: #111827;
+}
+
+/* Home dropdown hover */
+.site-header.is-home .main-nav .sub-menu a:hover,
+.site-header.is-home .main-nav .sub-menu .nav-item-label:hover {
+  color: var(--primary);
+
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* ========================================
+   NOT HOME
+   ======================================== */
+
+/*
+ * Not Home:
+ * - Header background primary
+ * - Main navigation putih
+ */
+
+.site-header:not(.is-home) {
+  background: var(--primary);
+}
+
+/* HANYA menu level pertama */
+.site-header:not(.is-home) .main-nav > .nav-item > a,
+.site-header:not(.is-home) .main-nav > .nav-item > .nav-item-label {
+  color: #fff;
+}
+
+/* Main menu hover */
+.site-header:not(.is-home) .main-nav > .nav-item > a:hover,
+.site-header:not(.is-home) .main-nav > .nav-item > .nav-item-label:hover {
+  color: #fff;
+
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/*
+ * Not Home dropdown:
+ * Tetap putih + text hitam
+ */
+
+.site-header:not(.is-home) .main-nav .sub-menu a,
+.site-header:not(.is-home) .main-nav .sub-menu .nav-item-label {
+  color: #111827;
+}
+
+/* Not Home dropdown hover */
+.site-header:not(.is-home) .main-nav .sub-menu a:hover,
+.site-header:not(.is-home) .main-nav .sub-menu .nav-item-label:hover {
+  color: var(--primary);
+
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
