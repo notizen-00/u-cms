@@ -16,3 +16,4 @@ export * from './sites.schema';
 export * from './tags.schema';
 export * from './user-site-roles.schema';
 export * from './users.schema';
+export * from './wordpress-imports.schema';

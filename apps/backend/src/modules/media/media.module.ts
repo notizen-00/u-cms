@@ -11,6 +11,6 @@ import { MediaStorageService } from './storage/media-storage.service';
   imports: [AuthModule, SitesModule, MinioClientModule],
   controllers: [MediaController],
   providers: [MediaService, MediaStorageService, MediaUploadPipelineService],
-  exports: [MediaService],
+  exports: [MediaService, MediaStorageService],
 })
 export class MediaModule {}

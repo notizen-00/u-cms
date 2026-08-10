@@ -16,3 +16,10 @@ export const buildStatusEnum = pgEnum('build_status', [
   'success',
   'failed',
 ]);
+
+export const wordpressImportStatusEnum = pgEnum('wordpress_import_status', [
+  'queued',
+  'running',
+  'success',
+  'failed',
+]);

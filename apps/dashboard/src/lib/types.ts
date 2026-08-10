@@ -260,6 +260,32 @@ export interface SitePlugin {
 	deactivatedAt: string | null;
 }
 
+export type WordpressImportStatus = 'queued' | 'running' | 'success' | 'failed';
+
+export interface WordpressImportStats {
+	categoriesImported: number;
+	tagsImported: number;
+	mediaImported: number;
+	mediaFailed: number;
+	pagesImported: number;
+	newsImported: number;
+	errors: string[];
+}
+
+/** One run of the `unej.wordpress-import` plugin (backend `GET /sites/:siteId/wordpress-import`). */
+export interface WordpressImport {
+	id: string;
+	siteId: string;
+	triggeredBy: string | null;
+	status: WordpressImportStatus;
+	sourceFileName: string;
+	stats: WordpressImportStats | null;
+	error: string | null;
+	startedAt: string | null;
+	finishedAt: string | null;
+	createdAt: string;
+}
+
 /** Mirrors @unej-cms/sdk-ui's PropertyFieldSchema/PropertySchema — drives the dynamic theme settings form. */
 interface PropertyFieldBase {
 	label: string;

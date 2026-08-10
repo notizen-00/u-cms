@@ -75,6 +75,21 @@ export class MediaStorageService implements OnModuleInit {
     await this.client.removeObject(this.config.minioBucket, key);
   }
 
+  /**
+   * Reads an object back into memory. Used by WordpressImportProcessor to
+   * hand a temp-uploaded WXR file from the `api` process (which received the
+   * upload) to the `worker` process (which runs the job) — MinIO is the only
+   * storage genuinely shared between the two in every deployment mode.
+   */
+  async getObjectBuffer(key: string): Promise<Buffer> {
+    const stream = await this.client.getObject(this.config.minioBucket, key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer);
+    }
+    return Buffer.concat(chunks);
+  }
+
   getPublicUrl(key: string): string {
     return `${this.config.minioPublicUrl}/${this.config.minioBucket}/${key}`;
   }

@@ -2,6 +2,7 @@ import { discoverPlugins, type CmsPlugin } from '@unej-cms/sdk-plugin';
 import autoAvifPlugin from '@unej-cms/plugin-auto-avif';
 import formBuilderPlugin from '@unej-cms/plugin-form-builder';
 import pageBuilderPlugin from '@unej-cms/plugin-page-builder';
+import wordpressImportPlugin from '@unej-cms/plugin-wordpress-import';
 
 export interface PluginDefinition {
   slug: string;
@@ -18,6 +19,7 @@ const SHIPPED_PLUGINS: readonly CmsPlugin[] = [
   pageBuilderPlugin,
   formBuilderPlugin,
   autoAvifPlugin,
+  wordpressImportPlugin,
 ];
 
 export const PLUGIN_REGISTRY: PluginDefinition[] = discoverPlugins(

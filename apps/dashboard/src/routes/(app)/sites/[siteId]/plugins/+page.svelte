@@ -169,6 +169,16 @@
 						<!-- Actions -->
 						{#if canManage}
 							<div class="mt-4 flex flex-wrap gap-2">
+								{#if plugin.slug === 'unej.wordpress-import' && plugin.isActive}
+									<Button
+										href="/sites/{data.site.id}/plugins/wordpress-import"
+										size="sm"
+										variant="outline"
+										class="w-full"
+									>
+										Kelola Import
+									</Button>
+								{/if}
 								<form
 									class="flex-1"
 									method="POST"
@@ -298,6 +308,11 @@
 					<TableCell>
 						{#if canManage}
 							<div class="flex flex-wrap gap-2">
+								{#if plugin.slug === 'unej.wordpress-import' && plugin.isActive}
+									<Button href="/sites/{data.site.id}/plugins/wordpress-import" size="sm" variant="outline">
+										Kelola Import
+									</Button>
+								{/if}
 								<form
 									method="POST"
 									action={plugin.isActive ? '?/deactivate' : '?/activate'}

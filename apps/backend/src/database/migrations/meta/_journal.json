@@ -71,6 +71,13 @@
       "when": 1786168618620,
       "tag": "0009_menu_items_clickable",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786340283219,
+      "tag": "0010_fuzzy_ultimatum",
+      "breakpoints": true
     }
   ]
 }

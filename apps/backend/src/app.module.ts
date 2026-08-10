@@ -20,6 +20,7 @@ import { SitesModule } from './modules/sites/sites.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { UsersModule } from './modules/users/users.module';
+import { WordpressImportModule } from './modules/wordpress-import/wordpress-import.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { UsersModule } from './modules/users/users.module';
     ThemesModule,
     FormsModule,
     MenusModule,
+    WordpressImportModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
