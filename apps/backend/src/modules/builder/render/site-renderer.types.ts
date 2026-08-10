@@ -20,6 +20,7 @@ export interface SiteRenderNewsItem {
   slug: string;
   excerpt: string | null;
   bodyMarkdown: string;
+  featuredImageUrl: string | null;
   publishedAt: Date | null;
   categories: SiteRenderTaxonomyItem[];
   tags: SiteRenderTaxonomyItem[];
