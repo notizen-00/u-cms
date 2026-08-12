@@ -20,6 +20,21 @@ describe("premiumTheme", () => {
     expect(premiumTheme.settings?.primaryColor?.type).toBe("color");
     expect(premiumTheme.settings?.heroTagline?.type).toBe("string");
   });
+
+  it("renders core.hero, core.text, and core.news for the Page Builder", () => {
+    expect(Object.keys(premiumTheme.blockRenderers ?? {}).sort()).toEqual([
+      "core.hero",
+      "core.news",
+      "core.text",
+    ]);
+  });
+
+  it("starts a new site with a hero and news homepage", () => {
+    expect(premiumTheme.defaultHomepage?.map((block) => block.type)).toEqual([
+      "core.hero",
+      "core.news",
+    ]);
+  });
 });
 
 describe("layout rendering (Eta)", () => {
@@ -98,5 +113,68 @@ describe("layout rendering (Eta)", () => {
     });
     expect(html).toContain("Halaman Statis");
     expect(html).toContain("<p>konten</p>");
+  });
+});
+
+describe("block rendering (Eta)", () => {
+  const eta = new Eta({ autoEscape: true });
+  const findBlock = (type: string) => {
+    const source = premiumTheme.blockRenderers?.[type];
+    if (!source) throw new Error(`no renderer for block "${type}"`);
+    return source;
+  };
+
+  const site = { name: "Situs Uji" };
+  const theme = { primaryColor: "#4f46e5" };
+
+  it("renders core.hero, falling back to the site name when no title is set", () => {
+    const withTitle = eta.renderString(findBlock("core.hero"), {
+      props: { title: "Judul Kustom", subtitle: "Sub", eyebrow: "Info", ctaLabel: "Mulai", ctaUrl: "/mulai", align: "center" },
+      site,
+      theme,
+    });
+    expect(withTitle).toContain("Judul Kustom");
+    expect(withTitle).toContain("Sub");
+    expect(withTitle).toContain("Info");
+    expect(withTitle).toContain('href="/mulai"');
+    expect(withTitle).toContain("align-center");
+
+    const withoutTitle = eta.renderString(findBlock("core.hero"), { props: {}, site, theme });
+    expect(withoutTitle).toContain("Situs Uji");
+  });
+
+  it("renders core.text as raw HTML, unescaped", () => {
+    const html = eta.renderString(findBlock("core.text"), {
+      props: { content: "<p>Isi <strong>kaya</strong></p>" },
+    });
+    expect(html).toContain("<p>Isi <strong>kaya</strong></p>");
+  });
+
+  it("renders core.news filtered by category and limited to `limit`", () => {
+    const newsItems = [
+      { slug: "a", title: "Berita A", excerpt: "Ringkasan A", categories: [{ name: "Kampus" }] },
+      { slug: "b", title: "Berita B", excerpt: "Ringkasan B", categories: [{ name: "Riset" }] },
+    ];
+
+    const all = eta.renderString(findBlock("core.news"), {
+      props: { title: "Sorotan", limit: 6, category: "" },
+      news: newsItems,
+    });
+    expect(all).toContain("Sorotan");
+    expect(all).toContain("Berita A");
+    expect(all).toContain("Berita B");
+
+    const filtered = eta.renderString(findBlock("core.news"), {
+      props: { title: "Sorotan", limit: 6, category: "kampus" },
+      news: newsItems,
+    });
+    expect(filtered).toContain("Berita A");
+    expect(filtered).not.toContain("Berita B");
+
+    const empty = eta.renderString(findBlock("core.news"), {
+      props: { title: "Sorotan", limit: 6, category: "" },
+      news: [],
+    });
+    expect(empty).toContain("Belum ada berita.");
   });
 });

@@ -2,11 +2,16 @@ import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
 import facultyTheme from '@unej-cms/theme-faculty';
 import joyTheme from '@unej-cms/theme-joy';
+import universityTheme from '@unej-cms/theme-university';
 import defaultTheme from '@unej-cms/theme-default';
 import { buildThemeHomepageBlocks, matchesThemeHomepage } from './homepage-blocks';
 
 const joy = joyTheme as CmsTheme<unknown>;
 const faculty = facultyTheme as CmsTheme<unknown>;
+// Declares no `defaultHomepage` — stands in for "a theme that hasn't opted
+// into a starter homepage" (docs/theme_aware_prd.md §19), as opposed to
+// `unej.theme-default`/`unej.theme-premium`, which now both declare one.
+const university = universityTheme as CmsTheme<unknown>;
 
 describe('buildThemeHomepageBlocks', () => {
   it("materialises the theme's declared starter homepage", () => {
@@ -45,8 +50,18 @@ describe('buildThemeHomepageBlocks', () => {
   });
 
   it('returns nothing for a theme that declares no starter homepage', () => {
-    // Eta themes have no block renderers, so seeding blocks would render blank.
-    expect(buildThemeHomepageBlocks(defaultTheme as CmsTheme<unknown>, 'X')).toEqual([]);
+    expect(buildThemeHomepageBlocks(university, 'X')).toEqual([]);
+  });
+
+  it('also seeds a starter homepage for Eta themes', () => {
+    // Eta themes (docs/theme_aware_prd.md §17) render blocks through their
+    // own `blockRenderers` templates instead of `.svelte` components — the
+    // Builder Runtime doesn't care which, so a starter homepage works the
+    // same way for either.
+    expect(buildThemeHomepageBlocks(defaultTheme as CmsTheme<unknown>, 'X').map((b) => b.type)).toEqual([
+      'core.hero',
+      'core.news',
+    ]);
   });
 });
 
