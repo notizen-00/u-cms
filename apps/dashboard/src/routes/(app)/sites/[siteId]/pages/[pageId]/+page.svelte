@@ -16,6 +16,7 @@
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import UploadCloud from '@lucide/svelte/icons/upload-cloud';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Blocks from '@lucide/svelte/icons/blocks';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -97,6 +98,15 @@
 	>
 		{#snippet actions()}
 			<StatusBadge status={data.page.status} />
+			<Button
+				variant="outline"
+				size="sm"
+				href="/sites/{data.site.id}/pages/{data.page.id}/builder"
+				title="Page Builder berbasis blok tema"
+			>
+				<Blocks class="size-4" />
+				<span class="hidden sm:inline">Builder</span>
+			</Button>
 			<Button
 				type="submit"
 				form="page-publish-form"

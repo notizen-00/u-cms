@@ -100,7 +100,11 @@ export class BuildProcessor extends WorkerHost {
         menus: menusByLocation,
         apiBaseUrl: this.config.apiPublicUrl,
         news: newsWithTaxonomies,
-        pages: publishedPages,
+        // The live site renders the last-*published* blocks snapshot, never
+        // the Builder's in-progress draft (docs/theme_aware_prd.md §16) —
+        // `publishedPages` itself (its `blocks` column) stays untouched below
+        // since `buildMenus`/`pagesById` only need slug/title/isHomepage.
+        pages: publishedPages.map((page) => ({ ...page, blocks: page.publishedBlocks })),
         forms: siteForms,
         pluginAssets: collectPluginAssets(activePlugins, 'site'),
       });

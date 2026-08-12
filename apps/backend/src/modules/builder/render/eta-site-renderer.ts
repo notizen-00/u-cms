@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { renderTokensCss, type CmsTheme } from '@unej-cms/sdk-theme';
+import type { PageBlock } from '@unej-cms/sdk-content';
 import { Eta } from 'eta';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolveTheme } from '../../themes/theme-registry';
+import { BlockRegistryService } from '../../blocks/block-registry.service';
+import { renderBlocks } from './block-content-renderer';
 import { ContentRenderer } from './content-renderer';
 import {
   emitPluginAssets,
@@ -18,7 +21,10 @@ import { resolveThemeVars } from './theme-vars';
 export class EtaSiteRenderer implements SiteRenderer {
   private readonly eta: Eta;
 
-  constructor(private readonly contentRenderer: ContentRenderer) {
+  constructor(
+    private readonly contentRenderer: ContentRenderer,
+    private readonly blockRegistry: BlockRegistryService,
+  ) {
     this.eta = new Eta({ autoEscape: true });
   }
 
@@ -40,6 +46,39 @@ export class EtaSiteRenderer implements SiteRenderer {
     const emittedPluginAssets = await emitPluginAssets(outputDir, data.pluginAssets);
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
+
+    /**
+     * A page's body comes from one of two places, and which one is decided by
+     * the content itself: block-authored pages render through the theme's own
+     * per-block Eta templates (docs/theme_aware_prd.md §17), while pages
+     * written before the theme-aware builder still render their Markdown.
+     * `renderBlocks()` is renderer-agnostic — this just supplies an Eta-backed
+     * `RenderComponent`, the same role `SvelteCompilerService` plays for
+     * Svelte themes.
+     */
+    const renderPageBody = async (page: {
+      blocks?: readonly PageBlock[];
+      bodyMarkdown: string;
+    }): Promise<string> => {
+      if (!page.blocks?.length) return renderMarkdown(page.bodyMarkdown);
+      return renderBlocks(
+        page.blocks,
+        theme,
+        data.themeId,
+        this.blockRegistry,
+        {
+          site: data.site,
+          theme: themeVars,
+          menus: data.menus ?? {},
+          news: data.news,
+          pages: data.pages,
+        },
+        async (source, _filename, props) => ({
+          head: '',
+          body: this.eta.renderString(source, props) as string,
+        }),
+      );
+    };
 
     // `site`/`theme`/`menus`/`tokensCss` are merged into every layout's data,
     // not just the outer "layout" wrapper — a theme's body templates (e.g. a
@@ -78,13 +117,21 @@ export class EtaSiteRenderer implements SiteRenderer {
     const homepage = data.pages.find((p) => p.isHomepage);
 
     // A homepage Page's body swaps in for the theme's own hardcoded "home"
-    // layout entirely (see the ternary below), so unlike every other Page it
+    // layout entirely (see the branches below), so unlike every other Page it
     // has no theme template of its own to supply the usual .wrap/.prose
     // container — wrapped here instead, same treatment `page`/`news-single`
     // give any other body content.
-    const homeBody = homepage
-      ? `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
-      : renderLayout('home', { news: data.news, pages: data.pages });
+    // A block-authored homepage brings its own full-width sections from the
+    // theme's block templates, so it must NOT be squeezed into the narrow
+    // `.wrap/.prose` reading column that Markdown bodies need.
+    let homeBody: string;
+    if (homepage?.blocks?.length) {
+      homeBody = await renderPageBody(homepage);
+    } else if (homepage) {
+      homeBody = `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`;
+    } else {
+      homeBody = renderLayout('home', { news: data.news, pages: data.pages });
+    }
     await writePage(
       '',
       'Beranda',
@@ -127,7 +174,7 @@ export class EtaSiteRenderer implements SiteRenderer {
     for (const page of data.pages) {
       if (page.isHomepage) continue;
       const body = renderLayout('page', {
-        item: { ...page, bodyHtml: renderMarkdown(page.bodyMarkdown) },
+        item: { ...page, bodyHtml: await renderPageBody(page) },
       });
       await writePage(
         page.slug,

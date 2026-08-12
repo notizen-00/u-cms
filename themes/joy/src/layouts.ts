@@ -6,6 +6,10 @@ import {
   NewsListSource,
   NewsSingleSource,
   PageSource,
+  BlockHeroSource,
+  BlockNewsGridSource,
+  BlockTextSource,
+  BlockAnnouncementSource,
 } from "./svelte-sources.generated.js";
 
 /**
@@ -62,3 +66,22 @@ export const pageLayout = defineLayout<string>({
 });
 
 export const layouts = [layoutLayout, homeLayout, newsListLayout, newsSingleLayout, pageLayout];
+
+/**
+ * How this theme renders each block type (docs/theme_aware_prd.md §17).
+ *
+ * `core.hero` and `joy.image-hero` deliberately share one component: the two
+ * differ only in which props the builder offers, not in how this theme draws
+ * a hero — and sharing is what makes the `joy.image-hero -> core.hero`
+ * fallback visually seamless.
+ *
+ * Blocks with no entry here (`core.video`, `core.events`, ...) are skipped at
+ * render time rather than half-drawn; add a component here to support one.
+ */
+export const blockRenderers: Record<string, string> = {
+  "core.hero": BlockHeroSource,
+  "joy.image-hero": BlockHeroSource,
+  "core.text": BlockTextSource,
+  "core.news": BlockNewsGridSource,
+  "joy.announcement": BlockAnnouncementSource,
+};

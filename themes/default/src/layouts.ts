@@ -54,6 +54,20 @@ caption{caption-side:top;text-align:left;font-weight:600;padding-bottom:.4em}
 .cms-pb-hero,.cms-pb-callout,.cms-pb-card,.cms-pb-card-grid.cms-pb-tone-primary,.cms-pb-card-grid.cms-pb-tone-dark,.cms-pb-card-grid.cms-pb-tone-soft,.cms-pb-card-grid.cms-pb-tone-info,.cms-pb-card-grid.cms-pb-tone-success,.cms-pb-card-grid.cms-pb-tone-warning,.cms-pb-gallery__item,.cms-pb-stats__list{border-radius:.375rem;box-shadow:none}
 .cms-pb-card{transition:none}
 .cms-pb-card:hover{transform:none;box-shadow:none;border-color:#dfe5ed}
+/* Page Builder blocks (docs/theme_aware_prd.md §17) — same flat,
+   square-cornered identity as the rest of this theme. */
+.blk-hero{padding:48px 0;border-bottom:1px solid var(--theme-muted,#dfe5ed)}
+.blk-hero.align-center{text-align:center}
+.blk-hero-bg{display:block;width:100%;height:220px;object-fit:cover;border-radius:.375rem;margin-bottom:16px}
+.blk-hero h2{margin:0 0 8px;font-size:1.75rem}
+.blk-eyebrow{display:block;font-size:.8rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:<%= it.theme.primaryColor %>;margin-bottom:6px}
+.blk-hero p{margin:0 0 16px;color:#475569}
+.blk-news-grid{margin:32px 0}
+.blk-news-grid h2{margin:0 0 16px}
+.blk-news-grid ul{list-style:none;margin:0;padding:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.blk-news-grid li{border:1px solid #dfe5ed;border-radius:.375rem;padding:14px}
+.blk-news-grid li h3{margin:0 0 6px;font-size:1rem}
+.blk-news-grid li p{margin:0;color:#64748b;font-size:.9rem}
 header{padding:16px 0;border-bottom:1px solid var(--theme-muted,#dfe5ed)}
 header h1{margin:0 0 8px;font-size:1.25rem}
 header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}

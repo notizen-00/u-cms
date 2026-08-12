@@ -30,7 +30,7 @@ const carouselPermission = definePermission({
 });
 
 const carouselBlock = defineBlock({
-  id: "carousel",
+  id: "unej.carousel.carousel",
   name: "Carousel",
   category: "media",
   propertySchema: {

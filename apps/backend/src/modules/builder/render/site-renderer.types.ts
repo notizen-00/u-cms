@@ -1,4 +1,5 @@
 import type { AssetDefinition } from '@unej-cms/sdk-ui';
+import type { PageBlock } from '@unej-cms/sdk-content';
 
 export interface SiteRenderSite {
   id: string;
@@ -30,6 +31,12 @@ export interface SiteRenderPageItem {
   title: string;
   slug: string;
   bodyMarkdown: string;
+  /**
+   * Structured block content (docs/theme_aware_prd.md §8). Empty for pages
+   * authored before the theme-aware builder — those carry their content in
+   * `bodyMarkdown` alone, and both forms stay renderable.
+   */
+  blocks: PageBlock[];
   isHomepage: boolean;
 }
 

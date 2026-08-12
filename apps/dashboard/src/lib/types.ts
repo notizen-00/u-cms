@@ -165,6 +165,18 @@ export interface PageItem {
 	title: string;
 	slug: string;
 	bodyMarkdown: string;
+	/**
+	 * Structured block content (docs/theme_aware_prd.md §8). Empty on pages
+	 * authored before the theme-aware builder existed — those still carry
+	 * their content in `bodyMarkdown` alone.
+	 */
+	blocks: PageBlock[];
+	/**
+	 * Snapshot of `blocks` as of the last "Publish" (docs/theme_aware_prd.md
+	 * §16) — what the live site currently renders. Differs from `blocks`
+	 * whenever the Builder has unpublished edits.
+	 */
+	publishedBlocks: PageBlock[];
 	parentId: string | null;
 	isHomepage: boolean;
 	order: number;
@@ -444,6 +456,63 @@ export interface ThemeSettings {
 	themeId: string;
 	schema: PropertySchema;
 	values: Record<string, unknown>;
+}
+
+/* ---------------- theme-aware Page Builder (docs/theme_aware_prd.md) ---------------- */
+
+/** Where a block comes from — `theme`/`plugin` blocks disappear when that theme/plugin is deactivated. */
+export type BlockSource = 'core' | 'theme' | 'plugin';
+
+/**
+ * Mirrors backend `src/modules/blocks/block.dto.ts` — one entry of the Block
+ * Registry. The builder drives its whole editor off `schema`, which is what
+ * keeps it independent of any theme's Svelte implementation.
+ */
+export interface BlockDefinition {
+	type: string;
+	label: string;
+	description?: string;
+	category: string;
+	icon?: string;
+	schema: PropertySchema;
+	slots?: string[];
+	/** Core block this one is a superset of, e.g. `faculty.video-hero` extends `core.hero`. */
+	extends?: string;
+	/** Block rendered in its place when this one isn't available under the active theme. */
+	fallback?: string;
+	source: BlockSource;
+}
+
+/** Mirrors `@unej-cms/sdk-content`'s PageBlock — structured page content (PRD §8). */
+export interface PageBlock {
+	id: string;
+	type: string;
+	props: Record<string, unknown>;
+	slots?: Record<string, PageBlock[]>;
+}
+
+/** One block type checked against a theme — drives the theme-switch warning (PRD §11, §25). */
+export interface BlockCompatibility {
+	type: string;
+	supported: boolean;
+	fallback: string | null;
+}
+
+/** One page that would lose sections under a candidate theme. */
+export interface PageCompatibility {
+	pageId: string;
+	title: string;
+	slug: string;
+	isHomepage: boolean;
+	unsupported: BlockCompatibility[];
+}
+
+/** Site-wide pre-switch scan result (PRD §25). */
+export interface SiteCompatibilityReport {
+	themeId: string;
+	scanned: number;
+	compatible: number;
+	affected: PageCompatibility[];
 }
 
 /** Mirrors backend `src/modules/menus/` — a saved custom navigation menu. */

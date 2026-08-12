@@ -98,4 +98,8 @@ export class AppConfigService {
   get aiApiModel(): string {
     return this.configService.get('AI_API_MODEL', { infer: true });
   }
+
+  get previewTokenSecret(): string | undefined {
+    return this.configService.get('PREVIEW_TOKEN_SECRET', { infer: true });
+  }
 }

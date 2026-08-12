@@ -2,6 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { listThemes, setSiteTheme } from '$lib/server/api/themes';
 import { getSite } from '$lib/server/api/sites';
+import { scanSiteCompatibility } from '$lib/server/api/blocks';
 import { ApiError } from '$lib/server/api/client';
 
 export const load: PageServerLoad = async (event) => {
@@ -22,6 +23,27 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+	/**
+	 * Reports what a switch to `themeId` would cost, without switching
+	 * (docs/theme_aware_prd.md §11, §25). Separate from `apply` so the admin
+	 * confirms an informed choice rather than discovering missing sections on
+	 * the live site afterwards.
+	 */
+	check: async (event) => {
+		const { siteId } = event.params;
+		const formData = await event.request.formData();
+		const themeId = String(formData.get('themeId') ?? '');
+
+		try {
+			return { report: await scanSiteCompatibility(event, siteId, themeId) };
+		} catch (err) {
+			if (err instanceof ApiError) {
+				return fail(err.status || 400, { message: err.message });
+			}
+			throw err;
+		}
+	},
+
 	apply: async (event) => {
 		const { siteId } = event.params;
 		const formData = await event.request.formData();

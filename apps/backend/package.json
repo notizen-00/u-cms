@@ -42,6 +42,7 @@
     "@unej-cms/plugin-form-builder": "workspace:*",
     "@unej-cms/plugin-page-builder": "workspace:*",
     "@unej-cms/plugin-wordpress-import": "workspace:*",
+    "@unej-cms/sdk-content": "workspace:*",
     "@unej-cms/sdk-media": "workspace:*",
     "@unej-cms/sdk-plugin": "workspace:*",
     "@unej-cms/sdk-theme": "workspace:*",

@@ -8,6 +8,10 @@ import {
   NewsSingleSource,
   PageSource,
   BreadCrumbSource,
+  BlockVideoHeroSource,
+  BlockNewsGridSource,
+  BlockTextSource,
+  BlockAcademicSearchSource,
 } from "./svelte-sources.generated.js";
 
 function withBreadcrumb(source: string): string {
@@ -74,3 +78,23 @@ export const pageLayout = defineLayout<string>({
 });
 
 export const layouts = [layoutLayout, homeLayout, newsListLayout, newsSingleLayout, pageLayout];
+
+/**
+ * How this theme renders each block type (docs/theme_aware_prd.md §17).
+ *
+ * `core.hero` maps to the same component as `faculty.video-hero`, and
+ * `core.search` to the same as `faculty.academic-search`: the pairs differ
+ * only in which props the builder offers, not in how this theme draws them —
+ * which is exactly what makes each block's declared fallback look seamless.
+ *
+ * Blocks with no entry here are skipped at render time rather than
+ * half-drawn; add a component to support one.
+ */
+export const blockRenderers: Record<string, string> = {
+  "core.hero": BlockVideoHeroSource,
+  "faculty.video-hero": BlockVideoHeroSource,
+  "core.search": BlockAcademicSearchSource,
+  "faculty.academic-search": BlockAcademicSearchSource,
+  "core.text": BlockTextSource,
+  "core.news": BlockNewsGridSource,
+};

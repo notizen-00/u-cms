@@ -1,45 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { renderTokensCss, type CmsTheme } from '@unej-cms/sdk-theme';
-import { createHash } from 'node:crypto';
+import type { PageBlock } from '@unej-cms/sdk-content';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { resolveTheme } from '../../themes/theme-registry';
+import { BlockRegistryService } from '../../blocks/block-registry.service';
+import { renderBlocks } from './block-content-renderer';
 import { ContentRenderer } from './content-renderer';
 import { emitPluginAssets, renderPluginAssetTags } from './plugin-assets';
 import { buildPageSeo, pickString, type PageSeo } from './seo';
 import type { SiteRenderData, SiteRenderer } from './site-renderer.types';
+import { SvelteCompilerService } from './svelte-compiler.service';
 import { resolveThemeVars } from './theme-vars';
-
-/**
- * Compiled-component cache directory, resolved relative to this file (not
- * `process.cwd()`, which varies with how the process was launched) so it
- * always lands inside `apps/backend` — where Node's module resolution will
- * find `apps/backend/node_modules/svelte` when the compiled output does
- * `import ... from 'svelte/internal/server'`.
- */
-const CACHE_DIR = join(__dirname, '..', '..', '..', '..', '.svelte-cache');
 
 /**
  * Renders themes authored as real `.svelte` components (see
  * modules/themes/theme-registry.ts's `renderKind: 'svelte'`), via Svelte's
  * own SSR-only `render()` — no SvelteKit, no hydration, no client bundle
- * (that's a separate, not-yet-built Builder phase). `apps/backend` is a
- * CommonJS package but Svelte 5 is ESM-only, so every Svelte-touching import
- * here is a dynamic `import()` — the one thing that reliably bridges CJS ->
- * ESM-only packages in Node.
+ * (that's a separate, not-yet-built Builder phase).
  *
  * A theme's `LayoutDefinition.render` is raw `.svelte` source text (just
  * like an Eta theme's `render` is raw Eta source text — same "TRender is
  * opaque, the Runtime interprets it" SDK principle, just a different
- * interpretation). Compiled once per unique source (content-hash cache, both
- * in-memory and on disk) and reused for every page that uses that layout.
+ * interpretation). Compilation and caching live in SvelteCompilerService,
+ * shared with the live preview so both render through one code path.
  */
 @Injectable()
 export class SvelteSiteRenderer implements SiteRenderer {
-  private readonly componentCache = new Map<string, unknown>();
-
-  constructor(private readonly contentRenderer: ContentRenderer) {}
+  constructor(
+    private readonly contentRenderer: ContentRenderer,
+    private readonly blockRegistry: BlockRegistryService,
+    private readonly compiler: SvelteCompilerService,
+  ) {}
 
   async render(outputDir: string, data: SiteRenderData): Promise<void> {
     // Safe to narrow to `CmsTheme<string>` here — BuildProcessor only ever
@@ -57,16 +49,32 @@ export class SvelteSiteRenderer implements SiteRenderer {
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
 
-    // Dynamically compiled at runtime from theme source text, so there's no
-    // static type to check components/props against — same trust boundary
-    // as Eta's `renderString(template, data)` accepting a plain object.
-    // Loosely typed here rather than fighting `render()`'s generic inference
-    // over a component with no compile-time type.
-    const { render } = (await import('svelte/server')) as {
-      render: (
-        component: unknown,
-        options: { props: Record<string, unknown> },
-      ) => { head: string; body: string };
+    /**
+     * A page's body comes from one of two places, and which one is decided by
+     * the content itself: block-authored pages render through the theme's own
+     * per-block components (docs/theme_aware_prd.md §17), while pages written
+     * before the theme-aware builder still render their Markdown. Both stay
+     * supported, so no existing page needs migrating to keep working.
+     */
+    const renderPageBody = async (page: {
+      blocks?: readonly PageBlock[];
+      bodyMarkdown: string;
+    }): Promise<string> => {
+      if (!page.blocks?.length) return renderMarkdown(page.bodyMarkdown);
+      return renderBlocks(
+        page.blocks,
+        theme,
+        data.themeId,
+        this.blockRegistry,
+        {
+          site: data.site,
+          theme: themeVars,
+          menus: data.menus ?? {},
+          news: data.news,
+          pages: data.pages,
+        },
+        (source, filename, props) => this.compiler.renderSource(source, filename, props),
+      );
     };
 
     const renderLayout = async (
@@ -77,15 +85,12 @@ export class SvelteSiteRenderer implements SiteRenderer {
       if (!source) {
         throw new Error(`Theme "${theme.manifest.id}" has no layout "${id}"`);
       }
-      const component = await this.compileAndImport(source, `${id}.svelte`);
-      return render(component, {
-        props: {
-          site: data.site,
-          theme: themeVars,
-          menus: data.menus ?? {},
-          tokensCss,
-          ...layoutData,
-        },
+      return this.compiler.renderSource(source, `${id}.svelte`, {
+        site: data.site,
+        theme: themeVars,
+        menus: data.menus ?? {},
+        tokensCss,
+        ...layoutData,
       });
     };
 
@@ -126,8 +131,13 @@ export class SvelteSiteRenderer implements SiteRenderer {
     // has no theme template of its own to supply the usual .wrap/.prose
     // container — wrapped here instead, same treatment `page`/`news-single`
     // give any other body content.
+    // A block-authored homepage brings its own full-width sections from the
+    // theme's components, so it must NOT be squeezed into the narrow
+    // `.wrap/.prose` reading column that Markdown bodies need.
     const homeBody = homepage
-      ? `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
+      ? homepage.blocks?.length
+        ? await renderPageBody(homepage)
+        : `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
       : (await renderLayout('home', { news: data.news, pages: data.pages })).body;
     await writePage(
       '',
@@ -172,7 +182,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
     for (const page of data.pages) {
       if (page.isHomepage) continue;
       const { body } = await renderLayout('page', {
-        item: { ...page, bodyHtml: renderMarkdown(page.bodyMarkdown) },
+        item: { ...page, bodyHtml: await renderPageBody(page) },
       });
       await writePage(
         page.slug,
@@ -186,20 +196,4 @@ export class SvelteSiteRenderer implements SiteRenderer {
     }
   }
 
-  private async compileAndImport(source: string, filename: string): Promise<unknown> {
-    const hash = createHash('sha256').update(source).digest('hex');
-    const cached = this.componentCache.get(hash);
-    if (cached) return cached;
-
-    const { compile } = await import('svelte/compiler');
-    const { js } = compile(source, { generate: 'server', filename });
-
-    await mkdir(CACHE_DIR, { recursive: true });
-    const cacheFile = join(CACHE_DIR, `${hash}.mjs`);
-    await writeFile(cacheFile, js.code, 'utf-8');
-
-    const mod = (await import(pathToFileURL(cacheFile).href)) as { default: unknown };
-    this.componentCache.set(hash, mod.default);
-    return mod.default;
-  }
 }

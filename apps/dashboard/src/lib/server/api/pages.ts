@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import type { ContentStatus, PageItem } from '$lib/types';
+import type { ContentStatus, PageBlock, PageItem } from '$lib/types';
 import { apiFetch } from './client';
 
 type MinimalEvent = Pick<RequestEvent, 'fetch' | 'cookies'>;
@@ -22,6 +22,8 @@ export interface PageInput {
 	title: string;
 	slug: string;
 	bodyMarkdown: string;
+	/** Structured block content (docs/theme_aware_prd.md §8) — sent by the theme-aware builder. */
+	blocks?: PageBlock[];
 	parentId?: string;
 	isHomepage?: boolean;
 	order?: number;
@@ -47,4 +49,15 @@ export function deletePage(event: MinimalEvent, siteId: string, pageId: string):
 
 export function publishPage(event: MinimalEvent, siteId: string, pageId: string): Promise<PageItem> {
 	return apiFetch<PageItem>(event, `/sites/${siteId}/pages/${pageId}/publish`, { method: 'POST' });
+}
+
+/** Publishes the Builder's draft `blocks` (docs/theme_aware_prd.md §16) — distinct from `publishPage`, which has no notion of a blocks snapshot. */
+export function publishPageBlocks(
+	event: MinimalEvent,
+	siteId: string,
+	pageId: string
+): Promise<PageItem> {
+	return apiFetch<PageItem>(event, `/sites/${siteId}/pages/${pageId}/publish-blocks`, {
+		method: 'POST'
+	});
 }

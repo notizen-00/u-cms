@@ -5,6 +5,7 @@ import { footerRegion, headerRegion } from "./regions.js";
 import { footerMenuLocation, primaryMenuLocation } from "./menu-locations.js";
 import { settings } from "./settings.js";
 import { tokens } from "./tokens.js";
+import { blockRenderers, defaultHomepage } from "./blocks.js";
 
 const defaultTemplate = defineTemplate({
   id: "default",
@@ -21,4 +22,6 @@ export const premiumTheme = defineTheme<string>({
   settings,
   tokens,
   templates: [defaultTemplate],
+  blockRenderers,
+  defaultHomepage,
 });

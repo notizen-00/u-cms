@@ -59,4 +59,14 @@ export class PagesController {
   publish(@Param('siteId') siteId: string, @Param('id') id: string) {
     return this.pagesService.publish(siteId, id);
   }
+
+  /**
+   * Publishes the Builder's draft `blocks` (docs/theme_aware_prd.md §16) —
+   * separate from `publish` above, which only ever touched `status`/rebuild
+   * timing and has no notion of a blocks snapshot to take.
+   */
+  @Post(':id/publish-blocks')
+  publishBlocks(@Param('siteId') siteId: string, @Param('id') id: string) {
+    return this.pagesService.publishBlocks(siteId, id);
+  }
 }

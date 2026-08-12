@@ -9,6 +9,7 @@ export * from './news-categories.schema';
 export * from './news-tags.schema';
 export * from './news.schema';
 export * from './pages.schema';
+export * from './preview-tokens.schema';
 export * from './roles.schema';
 export * from './sessions.schema';
 export * from './site-plugins.schema';

@@ -66,4 +66,21 @@ export class PagesService {
     await this.buildProducer.enqueue(siteId);
     return updated;
   }
+
+  /**
+   * Snapshots the current draft `blocks` into `publishedBlocks`
+   * (docs/theme_aware_prd.md §16) — the one action that lets Builder edits
+   * reach the live site. Until this runs, however long editing takes, the
+   * static build keeps rendering whatever was last published.
+   */
+  async publishBlocks(siteId: string, id: string) {
+    const page = await this.findOne(siteId, id);
+    const [updated] = await this.db
+      .update(pages)
+      .set({ publishedBlocks: page.blocks, status: 'published', updatedAt: new Date() })
+      .where(and(eq(pages.siteId, siteId), eq(pages.id, id)))
+      .returning();
+    await this.buildProducer.enqueue(siteId);
+    return updated;
+  }
 }

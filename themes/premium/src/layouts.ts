@@ -170,6 +170,11 @@ img { max-width: 100%; height: auto; display: block; }
   transform: translateY(-1px);
   box-shadow: 0 12px 24px -8px color-mix(in srgb, var(--primary) 70%, transparent);
 }
+/* Page Builder hero block (docs/theme_aware_prd.md §17) — same .hero shell as
+   the home layout, plus a centered variant editors can pick per page. */
+.hero.align-center { text-align: center; }
+.hero.align-center p { margin-left: auto; margin-right: auto; }
+.hero.align-center .btn { margin: 0 auto; }
 
 /* Sections */
 main { padding: 56px 0 80px; }

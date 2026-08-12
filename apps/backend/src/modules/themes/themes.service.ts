@@ -13,7 +13,7 @@ import { pages, sites, themeOverrides } from '../../database/schema';
 import { MediaStorageService } from '../media/storage/media-storage.service';
 import { BuildProducer } from '../builder/queue/build.producer';
 import { PagesService } from '../pages/pages.service';
-import { buildHomepageBodyMarkdown } from './homepage-blocks';
+import { buildThemeHomepageBlocks, matchesThemeHomepage } from './homepage-blocks';
 import { validateThemeSettingsValues } from './property-schema-validator';
 import {
   ALLOWED_SCREENSHOT_MIME_TYPES,
@@ -224,15 +224,21 @@ export class ThemesService {
   }
 
   /**
+   * Keeps the site's homepage in step with the theme
+   * (docs/theme_aware_prd.md §19).
+   *
    * Without a homepage Page, every renderer falls back to the theme's own
    * hardcoded "home" layout — fine as a default, but nothing on it is
-   * editable through the Dashboard. The first time a site gets a theme
-   * applied, this seeds a real, block-based homepage Page instead, so the
-   * hero/stats/services section an editor sees is the same thing they can
-   * open in the block editor and change. Never touches an existing
-   * homepage — this only ever fires once per site, not on every theme
-   * switch, so re-theming a site with real homepage content already in
-   * place can't silently clobber it.
+   * editable through the Dashboard. Applying a theme materialises that theme's
+   * declared starter homepage as a real, block-based Page instead, so what an
+   * editor lands on already looks like the theme and every part of it can be
+   * changed in the builder.
+   *
+   * On a *later* theme switch it rebuilds that homepage from the new theme —
+   * but only while the page still holds an untouched starter layout. Once
+   * someone has restructured it, their work outranks the new theme's defaults
+   * and is left alone; the pre-switch compatibility report is what warns them
+   * about any blocks the new theme cannot render.
    */
   private async ensureHomepage(
     siteId: string,
@@ -240,21 +246,43 @@ export class ThemesService {
     themeId: string,
     authorId: string,
   ): Promise<void> {
-    const [existingHomepage] = await this.db
-      .select({ id: pages.id })
+    const theme = resolveTheme(themeId);
+    const blocks = buildThemeHomepageBlocks(theme, siteName);
+    // A theme that declares no starter homepage has nothing to seed or
+    // refresh; its hardcoded `home` layout stays in charge.
+    if (blocks.length === 0) return;
+
+    const [existing] = await this.db
+      .select({ id: pages.id, blocks: pages.blocks })
       .from(pages)
       .where(and(eq(pages.siteId, siteId), eq(pages.isHomepage, true)))
       .limit(1);
-    if (existingHomepage) return;
 
-    const theme = resolveTheme(themeId);
-    const bodyMarkdown = buildHomepageBodyMarkdown(theme, siteName);
-    const created = await this.pagesService.create(siteId, authorId, {
-      title: 'Beranda',
-      slug: 'beranda',
-      bodyMarkdown,
-      isHomepage: true,
-    });
-    await this.pagesService.publish(siteId, created.id);
+    if (!existing) {
+      const created = await this.pagesService.create(siteId, authorId, {
+        title: 'Beranda',
+        slug: 'beranda',
+        blocks,
+        isHomepage: true,
+      });
+      // publishBlocks (not publish): also snapshots into `publishedBlocks`,
+      // which is what the site build actually reads. "Applying a theme" is a
+      // deliberate, complete admin action — not someone mid-edit — so there is
+      // no draft-vs-published gap here to preserve; it goes live immediately.
+      await this.pagesService.publishBlocks(siteId, created.id);
+      return;
+    }
+
+    // Markdown-authored homepages predate the block builder — replacing their
+    // content would destroy real work, so they are left as they are.
+    if (!existing.blocks?.length) return;
+
+    const stillStarter = THEME_CATALOG.some((candidate) =>
+      matchesThemeHomepage(existing.blocks, resolveTheme(candidate.id)),
+    );
+    if (!stillStarter) return;
+
+    await this.pagesService.update(siteId, existing.id, { blocks });
+    await this.pagesService.publishBlocks(siteId, existing.id);
   }
 }

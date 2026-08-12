@@ -4,5 +4,6 @@ export * from "./regions.js";
 export * from "./menu-locations.js";
 export * from "./settings.js";
 export * from "./tokens.js";
+export * from "./blocks.js";
 export * from "./theme.js";
 export { joyTheme as default } from "./theme.js";

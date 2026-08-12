@@ -7,6 +7,7 @@ import { AppConfigModule } from './config/app-config.module';
 import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BlocksModule } from './modules/blocks/blocks.module';
 import { BuilderQueueModule } from './modules/builder/builder-queue.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { FormsModule } from './modules/forms/forms.module';
@@ -16,6 +17,7 @@ import { MenusModule } from './modules/menus/menus.module';
 import { NewsModule } from './modules/news/news.module';
 import { PagesModule } from './modules/pages/pages.module';
 import { PluginsModule } from './modules/plugins/plugins.module';
+import { PreviewModule } from './modules/preview/preview.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { SitesModule } from './modules/sites/sites.module';
 import { TagsModule } from './modules/tags/tags.module';
@@ -47,6 +49,8 @@ import { WordpressImportModule } from './modules/wordpress-import/wordpress-impo
     MenusModule,
     WordpressImportModule,
     AiModule,
+    BlocksModule,
+    PreviewModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

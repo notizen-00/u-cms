@@ -45,6 +45,12 @@ export const envSchema = z.object({
   AI_API_BASE_URL: z.string().url().default('https://chat.unej.id/api'),
   AI_API_TOKEN: z.string().optional(),
   AI_API_MODEL: z.string().default('qwen3.6:latest'),
+
+  // Signs Page Builder preview links (docs/theme_aware_prd.md §23). Optional:
+  // when unset the server generates a random per-process secret, which is
+  // secure but drops outstanding preview links on restart and cannot validate
+  // across replicas. Set it in any multi-instance deployment.
+  PREVIEW_TOKEN_SECRET: z.string().min(16).optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

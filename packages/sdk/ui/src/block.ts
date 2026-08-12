@@ -51,6 +51,19 @@ export interface BlockDefinition<
   readonly render?: TRender;
 }
 
+/**
+ * Namespace reserved for blocks the CMS itself guarantees exist under every
+ * theme. Themes and plugins must use their own namespace, so a `core.*` id in
+ * stored content always means the same thing no matter which theme is active.
+ */
+export const CORE_BLOCK_NAMESPACE = "core";
+
+/** `core.hero` -> `core`; used to tell core / theme / plugin blocks apart. */
+export function blockNamespace(id: string): string {
+  const separator = id.indexOf(".");
+  return separator === -1 ? "" : id.slice(0, separator);
+}
+
 export interface DefineBlockInput<
   TProps extends PropertySchema,
   TRender,
@@ -67,8 +80,66 @@ export interface DefineBlockInput<
   readonly render?: TRender;
 }
 
+export class BlockDefinitionError extends Error {
+  constructor(
+    blockId: string,
+    public readonly issues: readonly { path: string; message: string }[],
+  ) {
+    super(
+      `Invalid block definition for "${blockId}":\n` +
+        issues.map((issue) => `  - ${issue.path}: ${issue.message}`).join("\n"),
+    );
+    this.name = "BlockDefinitionError";
+  }
+}
+
+/**
+ * The entry point a theme or plugin author calls to declare a block. Validates
+ * eagerly and freezes the result, so a malformed definition fails at the
+ * declaration — not later, somewhere far away, as a confusing render error.
+ */
 export function defineBlock<TProps extends PropertySchema, TRender>(
   input: DefineBlockInput<TProps, TRender>,
 ): BlockDefinition<TProps, TRender> {
+  const issues: { path: string; message: string }[] = [];
+
+  if (!input.id?.trim()) {
+    issues.push({ path: "id", message: "is required" });
+  } else if (!blockNamespace(input.id)) {
+    // Without a namespace two packages can both declare `hero`, and whichever
+    // registers second collides — or worse, silently changes what stored
+    // content means. Block ids are permanent references in saved pages.
+    issues.push({
+      path: "id",
+      message: 'must be namespaced as "<owner>.<block>", e.g. "faculty.video-hero"',
+    });
+  }
+  if (!input.name?.trim()) issues.push({ path: "name", message: "is required" });
+  if (!input.category?.trim()) issues.push({ path: "category", message: "is required" });
+  if (input.fallback && input.fallback === input.id) {
+    issues.push({ path: "fallback", message: "cannot fall back to itself" });
+  }
+
+  if (issues.length > 0) {
+    throw new BlockDefinitionError(input.id || "<unknown>", issues);
+  }
+
   return deepFreeze({ ...input, id: toBlockId(input.id) });
+}
+
+/**
+ * Adds a block to a registry, keyed by its own id (docs/theme_aware_prd.md
+ * §27). Thin on purpose — its value is that the key can never drift from the
+ * definition it points at, which is exactly the bug that makes a registry
+ * lookup return the wrong block.
+ *
+ * Throws `DuplicateRegistrationError` if the id is already taken, rather than
+ * letting one package silently clobber another's block.
+ */
+export function registerBlock(
+  registry: { register(key: BlockID, value: BlockDefinition): void },
+  block: BlockDefinition,
+): BlockDefinition {
+  registry.register(block.id, block);
+  return block;
 }
