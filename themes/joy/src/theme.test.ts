@@ -1,0 +1,166 @@
+import { describe, expect, it } from "vitest";
+import { joyTheme } from "./theme.js";
+
+describe("joyTheme", () => {
+  it("is a valid, frozen theme with all 5 layouts", () => {
+    expect(joyTheme.manifest.id).toBe("unej.theme-joy");
+    expect(joyTheme.layouts).toHaveLength(5);
+    expect(joyTheme.layouts.map((layout) => layout.id).sort()).toEqual(
+      ["home", "layout", "news-list", "news-single", "page"].sort(),
+    );
+  });
+
+  it("declares header/footer regions and primary/footer menu locations", () => {
+    expect(joyTheme.regions?.map((region) => region.id)).toEqual(["header", "footer"]);
+    expect(joyTheme.menuLocations?.map((location) => location.id)).toEqual(["primary", "footer"]);
+  });
+
+  it("exposes the expected settings with defaults, including the 4 generic stat pairs", () => {
+    expect(joyTheme.settings?.primaryColor?.type).toBe("color");
+    expect(joyTheme.settings?.secondaryColor?.type).toBe("color");
+    const stat1Value = joyTheme.settings?.stat1Value;
+    expect(stat1Value && "default" in stat1Value ? stat1Value.default : undefined).toBe("3");
+    const stat1Label = joyTheme.settings?.stat1Label;
+    expect(stat1Label && "default" in stat1Label ? stat1Label.default : undefined).toBe("Program");
+  });
+
+  it("declares fixed design tokens", () => {
+    expect(joyTheme.tokens?.colors?.background).toBe("#ffffff");
+    expect(joyTheme.tokens?.radius?.card).toBe("16px");
+  });
+
+  it("declares a 'default' template mapped to the 'page' layout", () => {
+    expect(joyTheme.templates).toHaveLength(1);
+    expect(joyTheme.templates?.[0]?.layout).toBe("page");
+  });
+
+  it("has no leftover placeholder markers in the layout source (substitution ran)", () => {
+    const layout = joyTheme.layouts.find((candidate) => candidate.id === "layout");
+    expect(layout?.render).not.toContain("__SCROLL_REVEAL_SCRIPT__");
+    expect(layout?.render).toContain("IntersectionObserver");
+  });
+});
+
+describe("layout rendering (Svelte SSR)", () => {
+  const findLayout = (id: string) => {
+    const layout = joyTheme.layouts.find((candidate) => candidate.id === id);
+    if (!layout) throw new Error(`layout "${id}" not found`);
+    return layout.render;
+  };
+
+  async function renderSvelte(source: string, props: Record<string, unknown>) {
+    const { compile } = await import("svelte/compiler");
+    const { render } = await import("svelte/server");
+    const { js } = compile(source, { generate: "server", filename: "Test.svelte" });
+
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath, pathToFileURL } = await import("node:url");
+
+    // Written inside this package (not `os.tmpdir()`) so the compiled
+    // output's `import ... from 'svelte/internal/server'` resolves via this
+    // package's own `node_modules/svelte` — same reasoning as
+    // `SvelteSiteRenderer.compileAndImport` in apps/backend.
+    const cacheDir = join(dirname(fileURLToPath(import.meta.url)), "..", ".test-svelte-cache");
+    await mkdir(cacheDir, { recursive: true });
+    const file = join(cacheDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+    await writeFile(file, js.code, "utf-8");
+    const mod = (await import(pathToFileURL(file).href)) as { default: unknown };
+
+    const renderComponent = render as unknown as (
+      component: unknown,
+      options: { props: Record<string, unknown> },
+    ) => { head: string; body: string };
+    return renderComponent(mod.default, { props });
+  }
+
+  const site = { name: "Situs Uji", slug: "test", logoUrl: null, faviconUrl: null };
+  const theme = {
+    primaryColor: "#7c3aed",
+    secondaryColor: "#f43f5e",
+    heroTagline: "Tagline uji",
+    heroBadgeText: "Badge Uji",
+    stat1Value: "1.000+",
+    stat1Label: "Anggota",
+    stat2Value: "10",
+    stat2Label: "Program",
+    stat3Value: "50",
+    stat3Label: "Kontributor",
+    stat4Value: "5+",
+    stat4Label: "Tahun",
+  };
+
+  it("renders the outer layout with title, dropdown nav, and injected body", async () => {
+    const { head, body } = await renderSvelte(findLayout("layout"), {
+      site,
+      theme,
+      menus: {
+        primary: [
+          {
+            label: "Profil",
+            url: "#",
+            newTab: false,
+            clickable: false,
+            children: [{ label: "Sejarah", url: "/sejarah/", newTab: false, clickable: true, children: [] }],
+          },
+        ],
+      },
+      tokensCss: ":root{--theme-background:#fff;}",
+      title: "Beranda",
+      body: "<p>halo</p>",
+      seo: { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null },
+    });
+
+    expect(head).toContain("<title>Beranda | Situs Uji</title>");
+    expect(head).toContain('<meta name="description" content="Deskripsi uji."/>');
+    expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
+    expect(head).toContain('<link rel="canonical" href="https://example.test/"/>');
+    expect(body).toContain("nav-item-label");
+    expect(body).toContain("Profil");
+    expect(body).toContain('href="/sejarah/"');
+    expect(body).toContain("<p>halo</p>");
+    expect(head).toContain(":root{--theme-background:#fff;}");
+  });
+
+  it("renders the home layout with hero, generic stats, news, and info cards", async () => {
+    const { body } = await renderSvelte(findLayout("home"), {
+      site,
+      theme,
+      news: [{ slug: "a", title: "Berita A", excerpt: "Ringkasan", categories: [], tags: [] }],
+      pages: [{ slug: "tentang", title: "Tentang", isHomepage: false }],
+    });
+
+    expect(body).toContain("Tagline uji");
+    expect(body).toContain("Badge Uji");
+    expect(body).toContain("1.000+");
+    expect(body).toContain("Anggota");
+    expect(body).toContain("Berita A");
+    expect(body).toContain("Tentang");
+  });
+
+  it("renders the news-single layout with taxonomy pills", async () => {
+    const { body } = await renderSvelte(findLayout("news-single"), {
+      item: {
+        title: "Judul Berita",
+        publishedAt: new Date("2026-01-01T00:00:00Z"),
+        categories: [{ name: "Kampus", slug: "kampus" }],
+        tags: [{ name: "unej", slug: "unej" }],
+        bodyHtml: "<p>isi</p>",
+      },
+    });
+
+    expect(body).toContain("Judul Berita");
+    expect(body).toContain("Kampus");
+    expect(body).toContain("#unej");
+    expect(body).toContain("<p>isi</p>");
+  });
+
+  it("renders the page layout", async () => {
+    const { body } = await renderSvelte(findLayout("page"), {
+      item: { title: "Halaman Statis", bodyHtml: "<p>konten</p>" },
+    });
+
+    expect(body).toContain("Halaman Statis");
+    expect(body).toContain("<p>konten</p>");
+  });
+});

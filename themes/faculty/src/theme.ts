@@ -21,11 +21,4 @@ export const facultyTheme = defineTheme<string>({
   settings,
   tokens,
   templates: [defaultTemplate],
-  // Layout.svelte loads Poppins/Inter from Google Fonts.
-  security: {
-    contentSecurityPolicy: {
-      "style-src": ["https://fonts.googleapis.com"],
-      "font-src": ["https://fonts.gstatic.com"],
-    },
-  },
 });

@@ -158,7 +158,7 @@ export const BLOCK_CATEGORIES: { label: string; types: BlockType[] }[] = [
  */
 export const INSPECTOR_FIRST_TYPES: BlockType[] = ['button', 'embed', 'calendar', 'html', 'form'];
 
-export type PageBuilderPatternId = 'landing' | 'profile' | 'faq';
+export type PageBuilderPatternId = 'landing' | 'profile' | 'faq' | 'admission';
 
 export interface PageBuilderPattern {
 	id: PageBuilderPatternId;
@@ -185,6 +185,12 @@ export const PAGE_BUILDER_PATTERNS: readonly PageBuilderPattern[] = [
 		name: 'Pusat Bantuan',
 		description: 'Pembuka, daftar pertanyaan, dan callout kontak.',
 		blockCount: 3
+	},
+	{
+		id: 'admission',
+		name: 'Beranda Pendaftaran',
+		description: 'Hero pendaftaran, statistik, kartu program, dan ajakan bergabung.',
+		blockCount: 4
 	}
 ] as const;
 
@@ -341,6 +347,63 @@ export function createPatternBlocks(patternId: PageBuilderPatternId): Block[] {
 				label: 'Pelajari lebih lanjut',
 				url: '#',
 				tone: 'info'
+			})
+		];
+	}
+
+	if (patternId === 'admission') {
+		return [
+			withValues('hero', {
+				eyebrow: 'Pendaftaran',
+				text: 'Informasi Pendaftaran Mahasiswa Baru',
+				body: 'Temukan jalur pendaftaran, program studi, dan informasi penting seputar penerimaan mahasiswa baru.',
+				label: 'Lihat Pendaftaran',
+				url: '/pendaftaran',
+				tone: 'primary',
+				align: 'left'
+			}),
+			withValues('stats', {
+				text: 'Sekilas angka',
+				tone: 'soft',
+				stats: [
+					{ id: uuid(), value: '3', label: 'Program Studi' },
+					{ id: uuid(), value: '49', label: 'Dosen' },
+					{ id: uuid(), value: '1.365', label: 'Mahasiswa Aktif' }
+				]
+			}),
+			withValues('cards', {
+				text: 'Program Studi',
+				body: 'Pilih program studi yang sesuai dengan minat dan tujuan karier Anda.',
+				tone: 'primary',
+				columnCount: 3,
+				cards: [
+					{
+						...createCardItem(),
+						title: 'Kesehatan Masyarakat',
+						text: 'Memahami faktor yang memengaruhi kesehatan masyarakat serta merencanakan, melaksanakan, dan mengevaluasi program kesehatan.',
+						label: 'Lihat program'
+					},
+					{
+						...createCardItem(),
+						title: 'Gizi',
+						text: 'Mempelajari ilmu gizi, diet, nutrisi, dan manajemen gizi untuk meningkatkan status gizi individu dan masyarakat.',
+						label: 'Lihat program'
+					},
+					{
+						...createCardItem(),
+						title: 'Administrasi Kesehatan',
+						text: 'Mengembangkan kemampuan manajerial dan kepemimpinan untuk mengambil peran strategis dalam organisasi kesehatan.',
+						label: 'Lihat program'
+					}
+				]
+			}),
+			withValues('callout', {
+				text: 'Siap Bergabung Bersama Kami?',
+				body: 'Temukan informasi pendaftaran, program studi, dan kehidupan kampus selengkapnya.',
+				label: 'Mulai Jelajahi',
+				url: '/news',
+				tone: 'dark',
+				align: 'center'
 			})
 		];
 	}

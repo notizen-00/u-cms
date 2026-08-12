@@ -5,11 +5,10 @@ import { getSetupStatus } from '$lib/server/api/setup';
 
 /**
  * Baseline headers for every admin response. No Content-Security-Policy here
- * (unlike the public sites this CMS builds, which get one per theme — see
- * `apps/backend`'s `render/security-headers.ts`): the dashboard is a live
- * SvelteKit app rather than static HTML, and a hand-written CSP risks
- * silently breaking its own bundle in ways that are hard to catch without a
- * full production smoke test. These four have no such downside.
+ * — a hand-written CSP is fragile against real page content (external
+ * images/videos, third-party embeds) and risks blocking legitimate content
+ * without a way to fully test every case in advance. These four don't
+ * restrict what a page can load, so they carry none of that risk.
  */
 function applySecurityHeaders(headers: Headers): void {
 	headers.set('X-Content-Type-Options', 'nosniff');

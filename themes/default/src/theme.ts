@@ -21,7 +21,4 @@ export const defaultTheme = defineTheme<string>({
   settings,
   tokens,
   templates: [defaultTemplate],
-  // No external resources (self-hosted only) — the Builder's CSP baseline
-  // (apps/backend render/security-headers.ts) covers this theme as-is, so
-  // there's nothing to add here.
 });

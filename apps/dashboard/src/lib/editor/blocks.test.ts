@@ -161,7 +161,7 @@ describe('Page Builder blocks', () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it.each<PageBuilderPatternId>(['landing', 'profile', 'faq'])('creates fresh ids for the %s pattern', (id) => {
+	it.each<PageBuilderPatternId>(['landing', 'profile', 'faq', 'admission'])('creates fresh ids for the %s pattern', (id) => {
 		const first = createPatternBlocks(id);
 		const second = createPatternBlocks(id);
 		const allIds = (blocks: ReturnType<typeof createPatternBlocks>) => [

@@ -10,10 +10,10 @@ const defaultTemplate = defineTemplate({
   id: "default",
   name: "Halaman Standar",
   layout: "page",
-  description: "Tipografi artikel standar untuk halaman institusi.",
+  description: "Tipografi artikel standar.",
 });
 
-export const universityTheme = defineTheme<string>({
+export const joyTheme = defineTheme<string>({
   manifest,
   layouts,
   regions: [headerRegion, footerRegion],

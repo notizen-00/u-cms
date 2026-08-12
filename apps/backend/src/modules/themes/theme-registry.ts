@@ -2,6 +2,7 @@ import { discoverThemes, type CmsTheme, type ThemeMetadata } from '@unej-cms/sdk
 import { join } from 'node:path';
 import defaultTheme from '@unej-cms/theme-default';
 import facultyTheme from '@unej-cms/theme-faculty';
+import joyTheme from '@unej-cms/theme-joy';
 import premiumTheme from '@unej-cms/theme-premium';
 import universityTheme from '@unej-cms/theme-university';
 
@@ -29,6 +30,7 @@ const INSTALLED_THEMES: readonly InstalledTheme[] = [
   { theme: premiumTheme as CmsTheme<unknown>, renderKind: 'eta', slug: 'premium' },
   { theme: universityTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'university' },
   { theme: facultyTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'faculty' },
+  { theme: joyTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'joy' },
 ];
 
 /**
