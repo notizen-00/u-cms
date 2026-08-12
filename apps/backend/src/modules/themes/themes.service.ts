@@ -5,13 +5,15 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { PropertySchema } from '@unej-cms/sdk-ui';
 import { DRIZZLE } from '../../database/database.module';
 import type { DrizzleDb } from '../../database/database.types';
-import { sites, themeOverrides } from '../../database/schema';
+import { pages, sites, themeOverrides } from '../../database/schema';
 import { MediaStorageService } from '../media/storage/media-storage.service';
 import { BuildProducer } from '../builder/queue/build.producer';
+import { PagesService } from '../pages/pages.service';
+import { buildHomepageBodyMarkdown } from './homepage-blocks';
 import { validateThemeSettingsValues } from './property-schema-validator';
 import {
   ALLOWED_SCREENSHOT_MIME_TYPES,
@@ -47,6 +49,7 @@ export class ThemesService {
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly buildProducer: BuildProducer,
     private readonly storage: MediaStorageService,
+    private readonly pagesService: PagesService,
   ) {}
 
   /** Merges each theme's admin-uploaded screenshot (if any) on top of its code-defined manifest. */
@@ -194,11 +197,22 @@ export class ThemesService {
       .update(sites)
       .set({ themeId, updatedAt: new Date() })
       .where(eq(sites.id, siteId))
-      .returning({ id: sites.id, themeId: sites.themeId });
+      .returning({ id: sites.id, themeId: sites.themeId, name: sites.name });
 
     if (!updated) {
       throw new NotFoundException('Site not found');
     }
+
+    // Best-effort: a homepage-seeding failure (e.g. a pre-existing "beranda"
+    // slug from unrelated manual page creation) shouldn't fail the theme
+    // switch itself, which is the action the caller actually asked for.
+    await this.ensureHomepage(updated.id, updated.name, themeId, triggeredByUserId).catch(
+      (error: unknown) => {
+        this.logger.warn(
+          `Could not auto-create homepage for site ${updated.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      },
+    );
 
     // Applying a theme only changes how the static site is *rendered* — it
     // has no effect until the next build, so trigger one immediately instead
@@ -206,6 +220,41 @@ export class ThemesService {
     // publish something.
     await this.buildProducer.enqueue(siteId, triggeredByUserId);
 
-    return updated;
+    return { id: updated.id, themeId: updated.themeId };
+  }
+
+  /**
+   * Without a homepage Page, every renderer falls back to the theme's own
+   * hardcoded "home" layout — fine as a default, but nothing on it is
+   * editable through the Dashboard. The first time a site gets a theme
+   * applied, this seeds a real, block-based homepage Page instead, so the
+   * hero/stats/services section an editor sees is the same thing they can
+   * open in the block editor and change. Never touches an existing
+   * homepage — this only ever fires once per site, not on every theme
+   * switch, so re-theming a site with real homepage content already in
+   * place can't silently clobber it.
+   */
+  private async ensureHomepage(
+    siteId: string,
+    siteName: string,
+    themeId: string,
+    authorId: string,
+  ): Promise<void> {
+    const [existingHomepage] = await this.db
+      .select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.siteId, siteId), eq(pages.isHomepage, true)))
+      .limit(1);
+    if (existingHomepage) return;
+
+    const theme = resolveTheme(themeId);
+    const bodyMarkdown = buildHomepageBodyMarkdown(theme, siteName);
+    const created = await this.pagesService.create(siteId, authorId, {
+      title: 'Beranda',
+      slug: 'beranda',
+      bodyMarkdown,
+      isHomepage: true,
+    });
+    await this.pagesService.publish(siteId, created.id);
   }
 }

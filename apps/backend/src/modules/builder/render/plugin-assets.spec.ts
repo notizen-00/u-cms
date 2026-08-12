@@ -134,7 +134,9 @@ describe('plugin assets', () => {
       body: '<script src="./runtime.js"></script>',
     });
 
-    expect(injected).toContain('<link rel="stylesheet" href="./styles.css">\n</head>');
+    // Head tags land right after <head> — before the theme's own <title>/
+    // <style> — so a theme's same-specificity CSS still wins the cascade.
+    expect(injected).toContain('<head>\n<link rel="stylesheet" href="./styles.css"><title>Site</title>');
     expect(injected).toContain('<script src="./runtime.js"></script>\n</body>');
   });
 });

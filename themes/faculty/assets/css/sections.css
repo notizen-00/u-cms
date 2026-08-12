@@ -34,3 +34,14 @@ main { display: block; }
 .cta-band { background: color-mix(in srgb, var(--primary) 6%, var(--theme-surface)); border-top: 1px solid var(--theme-line); border-bottom: 1px solid var(--theme-line); padding: 64px 0; text-align: center; }
 .cta-band h2 { font-size: 28px; margin-bottom: 12px; }
 .cta-band p { color: var(--theme-muted); max-width: 540px; margin: 0 auto 26px; }
+
+/* Page Builder reskin — matches this theme's own .news-card look/feel
+   (radius, hover lift, shadow, border-color shift all copied from
+   .news-card/.news-card:hover above) instead of the plugin's generic defaults. */
+.cms-pb-hero, .cms-pb-callout, .cms-pb-card, .cms-pb-gallery__item,
+.cms-pb-card-grid.cms-pb-tone-primary, .cms-pb-card-grid.cms-pb-tone-dark,
+.cms-pb-card-grid.cms-pb-tone-soft, .cms-pb-card-grid.cms-pb-tone-info,
+.cms-pb-card-grid.cms-pb-tone-success, .cms-pb-card-grid.cms-pb-tone-warning,
+.cms-pb-stats__list { border-radius: var(--theme-radius-card); }
+.cms-pb-card { box-shadow: none; }
+.cms-pb-card:hover { transform: translateY(-4px); box-shadow: 0 24px 44px -28px rgba(11,21,38,.35); border-color: color-mix(in srgb, var(--primary) 35%, var(--theme-line)); }

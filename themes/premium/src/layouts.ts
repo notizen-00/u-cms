@@ -307,6 +307,26 @@ main { padding: 56px 0 80px; }
 .prose img { border-radius: var(--radius); }
 .prose hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
 
+/* Page Builder reskin — matches this theme's own .card look/feel (radius,
+   hover lift, shadow depth all copied from .card/.card:hover above) instead
+   of the plugin's generic defaults. */
+.cms-pb-hero, .cms-pb-callout, .cms-pb-card, .cms-pb-gallery__item,
+.cms-pb-card-grid.cms-pb-tone-primary, .cms-pb-card-grid.cms-pb-tone-dark,
+.cms-pb-card-grid.cms-pb-tone-soft, .cms-pb-card-grid.cms-pb-tone-info,
+.cms-pb-card-grid.cms-pb-tone-success, .cms-pb-card-grid.cms-pb-tone-warning,
+.cms-pb-stats__list {
+  border-radius: var(--radius);
+}
+.cms-pb-card {
+  box-shadow: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.cms-pb-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+  box-shadow: 0 16px 32px -20px rgba(15, 23, 42, 0.35);
+}
+
 /* Baseline styles for host-owned core blocks. Plugins may enhance these later. */
 .cms-button {
   display: inline-block;

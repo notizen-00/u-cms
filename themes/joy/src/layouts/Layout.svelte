@@ -117,6 +117,26 @@ main { display: block; }
 .cms-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .cms-calendar td { text-align: center; }
 
+/* Page Builder reskin — bouncier and more colorful than the plugin's generic
+   defaults, on purpose: this theme's whole identity (violet/rose gradient,
+   playful footer) is bolder than a typical institutional theme, so its cards
+   get a livelier hover (translateY + slight scale, an overshoot easing) and
+   a primary-tinted shadow instead of a neutral gray one. */
+.cms-pb-hero, .cms-pb-callout, .cms-pb-card, .cms-pb-gallery__item,
+.cms-pb-card-grid.cms-pb-tone-primary, .cms-pb-card-grid.cms-pb-tone-dark,
+.cms-pb-card-grid.cms-pb-tone-soft, .cms-pb-card-grid.cms-pb-tone-info,
+.cms-pb-card-grid.cms-pb-tone-success, .cms-pb-card-grid.cms-pb-tone-warning,
+.cms-pb-stats__list { border-radius: var(--theme-radius-card); }
+.cms-pb-card {
+  box-shadow: none;
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s ease, border-color .2s ease;
+}
+.cms-pb-card:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 22px 42px -16px color-mix(in srgb, var(--primary) 45%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--theme-line));
+}
+
 /* Footer */
 .site-footer { background: #0b0716; color: #cbd5e1; padding: 64px 0 28px; margin-top: 40px; }
 .footer-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }

@@ -77,8 +77,13 @@ export class EtaSiteRenderer implements SiteRenderer {
 
     const homepage = data.pages.find((p) => p.isHomepage);
 
+    // A homepage Page's body swaps in for the theme's own hardcoded "home"
+    // layout entirely (see the ternary below), so unlike every other Page it
+    // has no theme template of its own to supply the usual .wrap/.prose
+    // container — wrapped here instead, same treatment `page`/`news-single`
+    // give any other body content.
     const homeBody = homepage
-      ? renderMarkdown(homepage.bodyMarkdown)
+      ? `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
       : renderLayout('home', { news: data.news, pages: data.pages });
     await writePage(
       '',

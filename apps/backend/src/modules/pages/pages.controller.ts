@@ -38,7 +38,7 @@ export class PagesController {
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createPageSchema)) dto: CreatePageDto,
   ) {
-    return this.pagesService.create(siteId, user, dto);
+    return this.pagesService.create(siteId, user.id, dto);
   }
 
   @Patch(':id')

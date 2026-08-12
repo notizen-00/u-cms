@@ -3,7 +3,6 @@ import { and, eq } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/database.module';
 import type { DrizzleDb } from '../../database/database.types';
 import { pages } from '../../database/schema';
-import type { AuthenticatedUser } from '../auth/auth.service';
 import { BuildProducer } from '../builder/queue/build.producer';
 import type { CreatePageDto } from './dto/create-page.dto';
 import type { UpdatePageDto } from './dto/update-page.dto';
@@ -31,10 +30,10 @@ export class PagesService {
     return item;
   }
 
-  async create(siteId: string, author: AuthenticatedUser, dto: CreatePageDto) {
+  async create(siteId: string, authorId: string, dto: CreatePageDto) {
     const [item] = await this.db
       .insert(pages)
-      .values({ siteId, authorId: author.id, ...dto })
+      .values({ siteId, authorId, ...dto })
       .returning();
     return item;
   }

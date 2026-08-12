@@ -32,6 +32,13 @@ export const layoutLayout = defineLayout<string>({
 <% if (it.site.faviconUrl) { %><link rel="icon" href="<%= it.site.faviconUrl %>"><% } %>
 <style>
 <%~ it.tokensCss || '' %>
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--theme-typography-body,system-ui,-apple-system,sans-serif);color:var(--theme-foreground,#111827);line-height:1.6}
+img{max-width:100%;height:auto}
+.wrap{max-width:var(--theme-layout-container,1100px);margin:0 auto;padding:0 20px}
+main{padding:var(--theme-spacing-section,48px) 0}
+.prose{max-width:var(--theme-layout-narrow,760px);margin:0 auto}
+.prose p,.prose ul,.prose ol{margin:0 0 1em}
 /* Baseline styles for host-owned core blocks. Plugins may enhance these later. */
 .cms-button{display:inline-block;padding:.5em 1.1em;border-radius:.375rem;background:<%= it.theme.primaryColor %>;color:#fff;text-decoration:none;font-weight:500}
 .cms-columns{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
@@ -42,9 +49,16 @@ th,td{border:1px solid #dfe5ed;padding:.4em .6em;text-align:left}
 th{background:#f5f7fb}
 caption{caption-side:top;text-align:left;font-weight:600;padding-bottom:.4em}
 .cms-calendar td{text-align:center}
-img{max-width:100%;height:auto}
+/* Page Builder reskin — flat and square-cornered, matching this theme's plain,
+   unadorned identity (no shadows/animation anywhere else in this theme). */
+.cms-pb-hero,.cms-pb-callout,.cms-pb-card,.cms-pb-card-grid.cms-pb-tone-primary,.cms-pb-card-grid.cms-pb-tone-dark,.cms-pb-card-grid.cms-pb-tone-soft,.cms-pb-card-grid.cms-pb-tone-info,.cms-pb-card-grid.cms-pb-tone-success,.cms-pb-card-grid.cms-pb-tone-warning,.cms-pb-gallery__item,.cms-pb-stats__list{border-radius:.375rem;box-shadow:none}
+.cms-pb-card{transition:none}
+.cms-pb-card:hover{transform:none;box-shadow:none;border-color:#dfe5ed}
+header{padding:16px 0;border-bottom:1px solid var(--theme-muted,#dfe5ed)}
+header h1{margin:0 0 8px;font-size:1.25rem}
 header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
-.main-nav{display:flex;gap:1em;align-items:center;position:relative}
+footer{padding:24px 0;border-top:1px solid var(--theme-muted,#dfe5ed);color:#64748b;font-size:.9rem}
+.main-nav{display:flex;gap:1em;align-items:center;position:relative;flex-wrap:wrap}
 .main-nav .nav-item{position:relative}
 .main-nav .sub-menu{display:none;position:absolute;top:100%;left:0;flex-direction:column;gap:.25em;background:#fff;border:1px solid #dfe5ed;border-radius:.375rem;padding:.5em;min-width:10em;z-index:10}
 .main-nav .sub-menu .nav-item{width:100%}
@@ -57,6 +71,7 @@ header h1 a{color:<%= it.theme.primaryColor %>;text-decoration:none}
 </head>
 <body>
 <header>
+<div class="wrap">
 <% if (it.site.logoUrl) { %><img src="<%= it.site.logoUrl %>" alt="<%= it.site.name %>"><% } %>
 <h1><a href="/"><%= it.site.name %></a></h1>
 <nav class="main-nav">
@@ -88,12 +103,15 @@ it.menus.primary.forEach(renderNavItem);
 <a href="/news/">Berita</a>
 <% } %>
 </nav>
+</div>
 </header>
 <main>
 <%~ it.body %>
 </main>
 <footer>
+<div class="wrap">
 <p>&copy; <%= new Date().getFullYear() %> <%= it.site.name %></p>
+</div>
 </footer>
 </body>
 </html>
@@ -104,7 +122,8 @@ export const homeLayout = defineLayout<string>({
   id: "home",
   name: "Beranda",
   description: "Body halaman beranda ketika belum ada Page yang ditandai sebagai homepage.",
-  render: `<section>
+  render: `<div class="wrap">
+<section>
 <h2>Berita Terbaru</h2>
 <% if (it.news.length === 0) { %>
 <p>Belum ada berita.</p>
@@ -123,6 +142,7 @@ export const homeLayout = defineLayout<string>({
 <% }) %>
 </ul>
 </section>
+</div>
 `,
 });
 
@@ -130,7 +150,8 @@ export const newsListLayout = defineLayout<string>({
   id: "news-list",
   name: "Daftar Berita",
   description: "Body halaman /news/ — daftar semua berita yang dipublikasikan.",
-  render: `<section>
+  render: `<div class="wrap">
+<section>
 <h1>Berita</h1>
 <% if (it.news.length === 0) { %>
 <p>Belum ada berita.</p>
@@ -145,6 +166,7 @@ export const newsListLayout = defineLayout<string>({
 <% }) %>
 </ul>
 </section>
+</div>
 `,
 });
 
@@ -152,7 +174,8 @@ export const newsSingleLayout = defineLayout<string>({
   id: "news-single",
   name: "Detail Berita",
   description: "Body halaman /news/{slug}/.",
-  render: `<article>
+  render: `<div class="wrap">
+<article>
 <h1><%= it.item.title %></h1>
 <% if (it.item.publishedAt) { %><p><em><%= it.item.publishedAt %></em></p><% } %>
 <% if (it.item.categories.length > 0) { %>
@@ -161,8 +184,11 @@ export const newsSingleLayout = defineLayout<string>({
 <% if (it.item.tags.length > 0) { %>
 <p><strong>Tag:</strong> <%= it.item.tags.map(function(tag) { return tag.name }).join(', ') %></p>
 <% } %>
+<div class="prose">
 <%~ it.item.bodyHtml %>
+</div>
 </article>
+</div>
 `,
 });
 
@@ -170,10 +196,14 @@ export const pageLayout = defineLayout<string>({
   id: "page",
   name: "Halaman Statis",
   description: "Body untuk Page biasa (bukan homepage).",
-  render: `<article>
+  render: `<div class="wrap">
+<article>
 <h1><%= it.item.title %></h1>
+<div class="prose">
 <%~ it.item.bodyHtml %>
+</div>
 </article>
+</div>
 `,
 });
 

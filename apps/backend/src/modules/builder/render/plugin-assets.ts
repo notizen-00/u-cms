@@ -133,10 +133,17 @@ export function renderPluginAssetTags(
   };
 }
 
-/** Injects runtime-owned tags into a complete HTML document produced by an Eta theme. */
+/**
+ * Injects runtime-owned tags into a complete HTML document produced by an
+ * Eta theme. Head tags land right after the opening `<head>` — BEFORE the
+ * theme's own `<style>` block — not before `</head>`, so a theme's
+ * same-specificity `.cms-pb-*` rule (e.g. reskinning Page Builder's cards to
+ * match its own look) wins the cascade instead of needing `!important` to
+ * beat a plugin stylesheet that would otherwise load later and win.
+ */
 export function injectPluginAssetTags(html: string, tags: PluginAssetTags): string {
   let result = html;
-  if (tags.head) result = injectBeforeClosingTag(result, 'head', tags.head);
+  if (tags.head) result = injectAfterOpeningTag(result, 'head', tags.head);
   if (tags.body) result = injectBeforeClosingTag(result, 'body', tags.body);
   return result;
 }
@@ -147,6 +154,16 @@ function relativePublicUrl(publicPath: string, pageRelativePath: string): string
     .map((part) => part.trim())
     .filter(Boolean).length;
   return `${depth === 0 ? './' : '../'.repeat(depth)}${publicPath}`;
+}
+
+function injectAfterOpeningTag(html: string, tagName: 'head' | 'body', content: string): string {
+  const openingTag = new RegExp(`<${tagName}[^>]*>`, 'i');
+  const match = openingTag.exec(html);
+  if (!match || match.index === undefined) {
+    throw new Error(`Rendered site document has no opening <${tagName}> tag`);
+  }
+  const insertAt = match.index + match[0].length;
+  return `${html.slice(0, insertAt)}\n${content}${html.slice(insertAt)}`;
 }
 
 function injectBeforeClosingTag(html: string, tagName: 'head' | 'body', content: string): string {

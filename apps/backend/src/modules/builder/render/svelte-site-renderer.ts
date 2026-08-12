@@ -107,7 +107,13 @@ export class SvelteSiteRenderer implements SiteRenderer {
       // every other page renders with the normal, opaque header.
       const { head, body } = await renderLayout('layout', { title, body: bodyHtml, seo, isHome });
       const pluginAssetTags = renderPluginAssetTags(emittedPluginAssets, relativePath);
-      const completeHead = [head, pluginAssetTags.head].filter(Boolean).join('\n');
+      // Plugin CSS (e.g. Page Builder's generic block styles) loads BEFORE
+      // the theme's own <style> block, not after — so a theme's same-
+      // specificity `.cms-pb-card` rule wins the cascade and can actually
+      // reskin a plugin's block to match its own look, instead of needing
+      // `!important` or higher specificity to override a later, "winning"
+      // plugin stylesheet.
+      const completeHead = [pluginAssetTags.head, head].filter(Boolean).join('\n');
       const completeBody = [body, pluginAssetTags.body].filter(Boolean).join('\n');
       const html = `<!DOCTYPE html>\n<html lang="id">\n<head>\n${completeHead}\n</head>\n<body>\n${completeBody}\n</body>\n</html>\n`;
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
@@ -115,8 +121,13 @@ export class SvelteSiteRenderer implements SiteRenderer {
 
     const homepage = data.pages.find((p) => p.isHomepage);
 
+    // A homepage Page's body swaps in for the theme's own hardcoded "home"
+    // layout entirely (see the ternary below), so unlike every other Page it
+    // has no theme template of its own to supply the usual .wrap/.prose
+    // container — wrapped here instead, same treatment `page`/`news-single`
+    // give any other body content.
     const homeBody = homepage
-      ? renderMarkdown(homepage.bodyMarkdown)
+      ? `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
       : (await renderLayout('home', { news: data.news, pages: data.pages })).body;
     await writePage(
       '',

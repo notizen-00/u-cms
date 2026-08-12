@@ -274,6 +274,21 @@ export const PAGE_BUILDER_STYLES = `
   .cms-pb-hero, .cms-pb-card, .cms-pb-gallery__item { break-inside: avoid; box-shadow: none; }
   .cms-pb-spacer { display: none; }
 }
+
+/* Every theme wraps article/page body content in a narrow ".prose" column
+   for reading comfort (~760px). That's the right width for running text,
+   but a rich block is a full section, not a paragraph — a 3-column card
+   grid or a side-by-side hero crushed into 760px reads as broken, not "on
+   brand". These block types break out to the full viewport width instead,
+   wherever they land inside ".prose", regardless of theme. */
+.prose > :where(.cms-pb-hero, .cms-pb-callout, .cms-pb-card-grid, .cms-pb-gallery, .cms-pb-stats, .cms-pb-faq) {
+  box-sizing: border-box;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: clamp(1.25rem, 4vw, 3rem);
+  padding-right: clamp(1.25rem, 4vw, 3rem);
+}
 `;
 
 export const pageBuilderStyleAsset = defineAsset({
