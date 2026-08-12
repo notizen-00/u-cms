@@ -5,6 +5,7 @@ export * from "./region.js";
 export * from "./menu-location.js";
 export * from "./tokens.js";
 export * from "./template.js";
+export * from "./security.js";
 export * from "./theme.js";
 export * from "./registry.js";
 export * from "./loader.js";

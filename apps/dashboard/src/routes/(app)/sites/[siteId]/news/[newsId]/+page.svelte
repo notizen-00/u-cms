@@ -101,6 +101,7 @@
 		backHref="/sites/{data.site.id}/news"
 		backLabel="Semua Berita"
 		documentLabel="Berita"
+		onTitleGenerated={(generated) => (title = generated)}
 	>
 		{#snippet actions()}
 			<StatusBadge status={data.news.status} />

@@ -25,6 +25,11 @@
 		if (!slugTouched) slug = slugify(title);
 	}
 
+	function onTitleGenerated(generated: string) {
+		title = generated;
+		if (!slugTouched) slug = slugify(title);
+	}
+
 	const existingHomepage = $derived(data.pages.find((p) => p.isHomepage));
 </script>
 
@@ -57,6 +62,7 @@
 		backHref="/sites/{data.site.id}/pages"
 		backLabel="Semua Halaman"
 		documentLabel="Halaman"
+		{onTitleGenerated}
 	>
 		{#snippet actions()}
 			<Button type="submit" form="page-new-form" size="sm" disabled={submitting}>

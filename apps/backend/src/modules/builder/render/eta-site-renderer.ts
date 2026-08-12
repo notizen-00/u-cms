@@ -11,6 +11,7 @@ import {
   renderPluginAssetTags,
 } from './plugin-assets';
 import { buildPageSeo, pickString, type PageSeo } from './seo';
+import { renderSecurityMetaTags } from './security-headers';
 import type { SiteRenderData, SiteRenderer } from './site-renderer.types';
 import { resolveThemeVars } from './theme-vars';
 
@@ -38,6 +39,7 @@ export class EtaSiteRenderer implements SiteRenderer {
     const baseKeywords = typeof themeVars.metaKeywords === 'string' ? themeVars.metaKeywords : '';
     const formsById = new Map(data.forms.map((form) => [form.id, form]));
     const emittedPluginAssets = await emitPluginAssets(outputDir, data.pluginAssets);
+    const securityMetaTags = renderSecurityMetaTags(theme);
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
 
@@ -68,10 +70,11 @@ export class EtaSiteRenderer implements SiteRenderer {
       const dir = relativePath ? join(outputDir, relativePath) : outputDir;
       await mkdir(dir, { recursive: true });
       const renderedHtml = renderLayout('layout', { title, body, seo });
-      const html = injectPluginAssetTags(
-        renderedHtml,
-        renderPluginAssetTags(emittedPluginAssets, relativePath),
-      );
+      const pluginAssetTags = renderPluginAssetTags(emittedPluginAssets, relativePath);
+      const html = injectPluginAssetTags(renderedHtml, {
+        head: [securityMetaTags, pluginAssetTags.head].filter(Boolean).join('\n'),
+        body: pluginAssetTags.body,
+      });
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
     };
 

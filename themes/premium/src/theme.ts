@@ -21,4 +21,11 @@ export const premiumTheme = defineTheme<string>({
   settings,
   tokens,
   templates: [defaultTemplate],
+  // main.css.eta @imports Plus Jakarta Sans from Google Fonts.
+  security: {
+    contentSecurityPolicy: {
+      "style-src": ["https://fonts.googleapis.com"],
+      "font-src": ["https://fonts.gstatic.com"],
+    },
+  },
 });

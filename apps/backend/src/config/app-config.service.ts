@@ -86,4 +86,16 @@ export class AppConfigService {
     }
     return `http://localhost:${this.port}`;
   }
+
+  get aiApiBaseUrl(): string {
+    return this.configService.get('AI_API_BASE_URL', { infer: true });
+  }
+
+  get aiApiToken(): string | undefined {
+    return this.configService.get('AI_API_TOKEN', { infer: true });
+  }
+
+  get aiApiModel(): string {
+    return this.configService.get('AI_API_MODEL', { infer: true });
+  }
 }

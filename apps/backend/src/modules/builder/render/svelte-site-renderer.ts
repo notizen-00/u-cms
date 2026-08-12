@@ -8,6 +8,7 @@ import { resolveTheme } from '../../themes/theme-registry';
 import { ContentRenderer } from './content-renderer';
 import { emitPluginAssets, renderPluginAssetTags } from './plugin-assets';
 import { buildPageSeo, pickString, type PageSeo } from './seo';
+import { renderSecurityMetaTags } from './security-headers';
 import type { SiteRenderData, SiteRenderer } from './site-renderer.types';
 import { resolveThemeVars } from './theme-vars';
 
@@ -54,6 +55,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
     const baseKeywords = typeof themeVars.metaKeywords === 'string' ? themeVars.metaKeywords : '';
     const formsById = new Map(data.forms.map((form) => [form.id, form]));
     const emittedPluginAssets = await emitPluginAssets(outputDir, data.pluginAssets);
+    const securityMetaTags = renderSecurityMetaTags(theme);
     const renderMarkdown = (markdown: string): string =>
       this.contentRenderer.renderMarkdown(markdown, data.site.id, data.apiBaseUrl, formsById);
 
@@ -107,7 +109,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
       // every other page renders with the normal, opaque header.
       const { head, body } = await renderLayout('layout', { title, body: bodyHtml, seo, isHome });
       const pluginAssetTags = renderPluginAssetTags(emittedPluginAssets, relativePath);
-      const completeHead = [head, pluginAssetTags.head].filter(Boolean).join('\n');
+      const completeHead = [securityMetaTags, head, pluginAssetTags.head].filter(Boolean).join('\n');
       const completeBody = [body, pluginAssetTags.body].filter(Boolean).join('\n');
       const html = `<!DOCTYPE html>\n<html lang="id">\n<head>\n${completeHead}\n</head>\n<body>\n${completeBody}\n</body>\n</html>\n`;
       await writeFile(join(dir, 'index.html'), html, 'utf-8');

@@ -3,6 +3,21 @@ import { error, isRedirect, redirect } from '@sveltejs/kit';
 import { getMe } from '$lib/server/api/auth';
 import { getSetupStatus } from '$lib/server/api/setup';
 
+/**
+ * Baseline headers for every admin response. No Content-Security-Policy here
+ * (unlike the public sites this CMS builds, which get one per theme — see
+ * `apps/backend`'s `render/security-headers.ts`): the dashboard is a live
+ * SvelteKit app rather than static HTML, and a hand-written CSP risks
+ * silently breaking its own bundle in ways that are hard to catch without a
+ * full production smoke test. These four have no such downside.
+ */
+function applySecurityHeaders(headers: Headers): void {
+	headers.set('X-Content-Type-Options', 'nosniff');
+	headers.set('X-Frame-Options', 'DENY');
+	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	headers.set('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), interest-cohort=()');
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const { pathname, search } = event.url;
 	const isSetupPage = pathname === '/setup';
@@ -44,5 +59,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, '/');
 	}
 
-	return resolve(event);
+	const response = await resolve(event);
+	applySecurityHeaders(response.headers);
+	return response;
 };

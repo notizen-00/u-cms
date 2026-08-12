@@ -93,6 +93,7 @@
 		backHref="/sites/{data.site.id}/pages"
 		backLabel="Semua Halaman"
 		documentLabel="Halaman"
+		onTitleGenerated={(generated) => (title = generated)}
 	>
 		{#snippet actions()}
 			<StatusBadge status={data.page.status} />

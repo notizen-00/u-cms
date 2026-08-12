@@ -104,7 +104,8 @@
 		documentLabel = 'Dokumen',
 		documentHeader,
 		documentPanel,
-		actions
+		actions,
+		onTitleGenerated
 	}: {
 		value?: string;
 		name: string;
@@ -121,6 +122,8 @@
 		documentPanel?: Snippet;
 		/** Save/publish/delete controls for the top bar. */
 		actions?: Snippet;
+		/** Called when "Buat dengan AI" also produced a title — the route owns that field, not this component. */
+		onTitleGenerated?: (title: string) => void;
 	} = $props();
 
 	type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
@@ -168,6 +171,8 @@
 	let pendingFocusId = $state<string | null>(null);
 
 	const pageBuilderTypes = new Set<BlockType>(PAGE_BUILDER_RICH_TYPES);
+	/** Block types whose primary content is prose the AI dialog can write straight into. */
+	const AI_TEXT_TYPES = new Set<BlockType>(['heading', 'paragraph', 'quote', 'callout', 'code', 'list']);
 	let history = $state<string[]>([JSON.stringify(initialBlocks)]);
 	let historyIndex = $state(0);
 	let historyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -395,6 +400,65 @@
 		});
 	}
 
+	/* ---------------- AI prompt ---------------- */
+
+	let aiOpen = $state(false);
+	let aiPrompt = $state('');
+	let aiLoading = $state(false);
+	let aiError = $state<string | null>(null);
+
+	function openAiDialog() {
+		aiPrompt = '';
+		aiError = null;
+		aiOpen = true;
+	}
+
+	/**
+	 * Parses the AI's Markdown reply into as many blocks as its structure calls
+	 * for (one per paragraph, a single list block for a bullet/numbered run,
+	 * one per heading...) via the same parser Code mode uses, so "3 paragraf"
+	 * becomes 3 paragraph blocks and a list becomes one list block, not prose
+	 * mashed into a single block.
+	 */
+	function insertAiText(markdown: string) {
+		const newBlocks = markdownToBlocks(markdown);
+		const target = selectedBlock;
+		if (target && AI_TEXT_TYPES.has(target.type)) {
+			const at = indexOf(target.id);
+			blocks = [...blocks.slice(0, at), ...newBlocks, ...blocks.slice(at + 1)];
+		} else {
+			const at = target ? indexOf(target.id) + 1 : blocks.length;
+			blocks = [...blocks.slice(0, at), ...newBlocks, ...blocks.slice(at)];
+		}
+		selectedId = newBlocks[0]?.id ?? selectedId;
+	}
+
+	async function generateWithAi() {
+		const prompt = aiPrompt.trim();
+		if (!prompt || aiLoading) return;
+		aiLoading = true;
+		aiError = null;
+		try {
+			const response = await fetch(`/sites/${siteId}/ai/generate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ prompt })
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				aiError = payload?.message ?? 'Gagal membuat konten. Coba lagi.';
+				return;
+			}
+			insertAiText(payload.text as string);
+			if (payload.title) onTitleGenerated?.(payload.title as string);
+			aiOpen = false;
+		} catch {
+			aiError = 'Tidak bisa terhubung ke server.';
+		} finally {
+			aiLoading = false;
+		}
+	}
+
 	/* ---------------- inserter ---------------- */
 
 	let inserterOpen = $state(false);
@@ -531,6 +595,10 @@
 
 		<Button type="button" size="sm" onclick={() => openInserter(null)} disabled={mode !== 'visual'}>
 			<Plus class="size-4" /> <span class="hidden sm:inline">Blok</span>
+		</Button>
+
+		<Button type="button" size="sm" variant="outline" onclick={openAiDialog} disabled={mode !== 'visual'}>
+			<Sparkles class="size-4" /> <span class="hidden sm:inline">Buat dengan AI</span>
 		</Button>
 
 		<div class="flex rounded-md border border-border p-0.5">
@@ -1030,6 +1098,50 @@
 			{:else if filteredPatterns.length === 0}
 				<p class="py-6 text-center text-sm text-muted-foreground">Tidak ada blok yang cocok.</p>
 			{/if}
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- --------------------------------------------------------- AI prompt -->
+<Dialog.Root bind:open={aiOpen}>
+	<Dialog.Content class="max-w-lg">
+		<Dialog.Header>
+			<Dialog.Title>Buat konten dengan AI</Dialog.Title>
+		</Dialog.Header>
+
+		<div class="space-y-3">
+			<p class="text-sm text-muted-foreground">
+				Tulis instruksi untuk AI. Judul akan terisi otomatis, dan isinya dipecah jadi beberapa
+				blok sesuai strukturnya (mis. 3 paragraf jadi 3 blok, daftar jadi blok daftar), lalu
+				{selectedBlock && AI_TEXT_TYPES.has(selectedBlock.type)
+					? 'menggantikan blok yang sedang dipilih'
+					: 'ditambahkan setelah blok yang sedang dipilih'}.
+			</p>
+			<Textarea
+				bind:value={aiPrompt}
+				rows={5}
+				placeholder="Contoh: Tulis paragraf pembuka berita tentang wisuda periode Agustus 2026..."
+				disabled={aiLoading}
+				autofocus
+				onkeydown={(event: KeyboardEvent) => {
+					if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+						event.preventDefault();
+						generateWithAi();
+					}
+				}}
+			/>
+			{#if aiError}
+				<p class="text-sm text-destructive">{aiError}</p>
+			{/if}
+		</div>
+
+		<div class="flex justify-end gap-2 pt-2">
+			<Button type="button" variant="ghost" onclick={() => (aiOpen = false)} disabled={aiLoading}>
+				Batal
+			</Button>
+			<Button type="button" onclick={generateWithAi} disabled={aiLoading || !aiPrompt.trim()}>
+				{aiLoading ? 'Membuat...' : 'Buat'}
+			</Button>
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

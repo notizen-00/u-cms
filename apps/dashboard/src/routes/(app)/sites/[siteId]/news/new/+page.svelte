@@ -34,6 +34,11 @@
 	function onTitleInput() {
 		if (!slugTouched) slug = slugify(title);
 	}
+
+	function onTitleGenerated(generated: string) {
+		title = generated;
+		if (!slugTouched) slug = slugify(title);
+	}
 </script>
 
 <svelte:head>
@@ -66,6 +71,7 @@
 		backHref="/sites/{data.site.id}/news"
 		backLabel="Semua Berita"
 		documentLabel="Berita"
+		{onTitleGenerated}
 	>
 		{#snippet actions()}
 			<Button type="submit" form="news-new-form" size="sm" disabled={submitting}>

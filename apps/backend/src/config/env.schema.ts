@@ -38,6 +38,13 @@ export const envSchema = z.object({
   // only works if that host is reachable from outside Docker (e.g. local
   // dev with the port mapped straight through, as in deploy/docker-compose.yml).
   API_PUBLIC_URL: z.string().url().optional(),
+
+  // OpenAI-compatible chat completions endpoint used by the post/page editor's
+  // "Buat dengan AI" action (AiService). Points at the campus gateway by
+  // default; the feature is disabled (503) until AI_API_TOKEN is set.
+  AI_API_BASE_URL: z.string().url().default('https://chat.unej.id/api'),
+  AI_API_TOKEN: z.string().optional(),
+  AI_API_MODEL: z.string().default('qwen3.6:latest'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

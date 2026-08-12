@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppConfigModule } from './config/app-config.module';
 import { DatabaseModule } from './database/database.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BuilderQueueModule } from './modules/builder/builder-queue.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -45,6 +46,7 @@ import { WordpressImportModule } from './modules/wordpress-import/wordpress-impo
     FormsModule,
     MenusModule,
     WordpressImportModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

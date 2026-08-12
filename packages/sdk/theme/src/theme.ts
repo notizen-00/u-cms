@@ -7,6 +7,7 @@ import type { MenuLocationDefinition } from "./menu-location.js";
 import type { CmsStyle } from "./style.js";
 import type { ThemeTokens } from "./tokens.js";
 import type { ThemeTemplateDefinition } from "./template.js";
+import type { ThemeSecurityDefaults } from "./security.js";
 
 /**
  * Everything a theme declares, up front (Declarative Registration). A theme
@@ -27,6 +28,8 @@ export interface CmsTheme<TRender = unknown> {
   readonly tokens?: ThemeTokens;
   /** Named page templates editors can pick from, each mapping to one of `layouts[].id`. */
   readonly templates?: readonly ThemeTemplateDefinition[];
+  /** CSP additions this theme needs (e.g. an external font host), merged over the Builder's CMS-wide baseline. Omit if the theme loads nothing beyond what the baseline already allows. */
+  readonly security?: ThemeSecurityDefaults;
 }
 
 export class ThemeDefinitionError extends Error {
