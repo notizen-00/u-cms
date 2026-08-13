@@ -52,8 +52,8 @@ describe('renderBlocks', () => {
     renderComponent = await makeRenderComponent();
   });
 
-  const run = (blocks: PageBlock[], theme: unknown, themeId: string) =>
-    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+  const run = (blocks: PageBlock[], theme: unknown, themeId: string, editable = false) =>
+    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent, editable);
 
   it("renders a theme block with that theme's own markup", async () => {
     const html = await run(
@@ -130,5 +130,35 @@ describe('renderBlocks', () => {
     // rest of the page down with it.
     expect(html).toContain('tetap ada');
     expect(html).not.toContain('mega-menu');
+  });
+
+  it('wraps each block in a data-cms-block-id marker when editable is true', async () => {
+    const html = await run(
+      [{ id: 'h1', type: 'core.hero', props: { title: 'Judul' } }],
+      joyTheme,
+      JOY,
+      true,
+    );
+
+    expect(html).toContain('data-cms-block-id="h1"');
+    expect(html).toContain('data-cms-block-type="core.hero"');
+  });
+
+  it('marks a fallback-rendered block with its resolved type, not its stored type', async () => {
+    const html = await run(
+      [{ id: 'h1', type: 'faculty.video-hero', props: { title: 'Judul' } }],
+      joyTheme,
+      JOY,
+      true,
+    );
+
+    expect(html).toContain('data-cms-block-id="h1"');
+    expect(html).toContain('data-cms-block-type="core.hero"');
+  });
+
+  it('emits no markers when editable is omitted (production default)', async () => {
+    const html = await run([{ id: 'h1', type: 'core.hero', props: { title: 'Judul' } }], joyTheme, JOY);
+
+    expect(html).not.toContain('data-cms-block-id');
   });
 });

@@ -43,6 +43,8 @@
 			user={data.user}
 			sites={data.sites}
 			{activeSite}
+			activeTheme={data.activeTheme}
+			homepagePageId={data.homepagePageId}
 			onMenuToggle={openSidebar}
 		/>
 

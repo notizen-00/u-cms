@@ -18,8 +18,13 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import MediaPicker from '$lib/components/app/media/MediaPicker.svelte';
+	import ImageResizer from '$lib/components/app/media/ImageResizer.svelte';
 	import ImagePlus from '@lucide/svelte/icons/image-plus';
+	import Crop from '@lucide/svelte/icons/crop';
 	import type { Media, PropertyFieldSchema } from '$lib/types';
+
+	/** `.svg` is deliberately excluded — cropping it would rasterize a vector logo into a fixed-size PNG. */
+	const RASTER_IMAGE_URL = /\.(jpe?g|png|gif|webp|avif)(\?|#|$)/i;
 
 	let {
 		name,
@@ -57,6 +62,7 @@
 	let jsonText = $state(JSON.stringify(value ?? (field.type === 'array' ? [] : {}), null, 2));
 
 	let mediaPickerOpen = $state(false);
+	let resizerOpen = $state(false);
 
 	const jsonError = $derived.by(() => {
 		try {
@@ -132,13 +138,33 @@
 			<Input {name} bind:value={textValue} class="font-mono" placeholder="#075985" required={field.required} />
 		</div>
 	{:else if field.type === 'media'}
+		{#if textValue}
+			<img
+				src={textValue}
+				alt=""
+				class="h-20 w-20 rounded-md border border-border bg-muted object-cover"
+			/>
+		{/if}
 		<div class="flex gap-2">
 			<Input id={name} {name} bind:value={textValue} placeholder="https://…" />
 			<Button type="button" variant="outline" onclick={() => (mediaPickerOpen = true)}>
 				<ImagePlus /> Pilih
 			</Button>
+			{#if textValue && RASTER_IMAGE_URL.test(textValue)}
+				<Button type="button" variant="outline" onclick={() => (resizerOpen = true)} title="Pangkas/ubah ukuran">
+					<Crop />
+				</Button>
+			{/if}
 		</div>
 		<MediaPicker {siteId} bind:open={mediaPickerOpen} onSelect={(media: Media) => (textValue = media.url)} />
+		{#if textValue}
+			<ImageResizer
+				{siteId}
+				bind:open={resizerOpen}
+				imageUrl={textValue}
+				onApply={(media: Media) => (textValue = media.url)}
+			/>
+		{/if}
 	{:else if field.type === 'richtext'}
 		<Textarea id={name} {name} bind:value={textValue} rows={6} required={field.required} />
 	{:else if field.type === 'array' || field.type === 'object'}

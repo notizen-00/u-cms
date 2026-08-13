@@ -188,7 +188,7 @@ function assertInsideOutput(outputRoot: string, filePath: string): void {
   }
 }
 
-function escapeHtmlAttribute(value: string): string {
+export function escapeHtmlAttribute(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')

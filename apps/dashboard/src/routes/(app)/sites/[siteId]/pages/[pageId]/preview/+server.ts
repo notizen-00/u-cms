@@ -2,6 +2,22 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { issuePreviewToken, previewUrl } from '$lib/server/api/preview';
 import { ApiError } from '$lib/server/api/client';
+import { PREVIEW_EDITOR_SCRIPT, PREVIEW_EDITOR_STYLE } from '$lib/server/preview-editor-script';
+
+/**
+ * Adds the Builder's click-to-select/insert editing chrome right before
+ * `</body>` (same idea as the API's own `injectBeforeClosingTag` in
+ * plugin-assets.ts, reimplemented here rather than imported — this is
+ * dashboard editing UX, not core rendering, so it stays decoupled from that
+ * package). Unlike the API's version, a missing `</body>` fails gracefully
+ * (preview still renders, just without editing chrome) rather than throwing
+ * — this injection is cosmetic, not something a broken preview should hinge on.
+ */
+function injectBeforeClosingBody(html: string, content: string): string {
+	const match = /<\/body\s*>/i.exec(html);
+	if (!match || match.index === undefined) return html;
+	return `${html.slice(0, match.index)}${content}\n${html.slice(match.index)}`;
+}
 
 /**
  * Same-origin proxy for the page preview.
@@ -21,7 +37,10 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const token = await issuePreviewToken(event, siteId, pageId);
 		const response = await event.fetch(previewUrl(pageId, token));
-		const html = await response.text();
+		const html = injectBeforeClosingBody(
+			await response.text(),
+			`<style>${PREVIEW_EDITOR_STYLE}</style><script>${PREVIEW_EDITOR_SCRIPT}</script>`
+		);
 
 		return new Response(html, {
 			status: response.status,

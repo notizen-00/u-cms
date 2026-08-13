@@ -1,6 +1,7 @@
 import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
 import type { BlockRegistryService } from '../../blocks/block-registry.service';
+import { escapeHtmlAttribute } from './plugin-assets';
 
 /** Ambient data every block component receives, mirroring what layouts get. */
 export interface BlockRenderContext {
@@ -34,6 +35,16 @@ export async function renderBlocks(
   registry: BlockRegistryService,
   context: BlockRenderContext,
   renderComponent: RenderComponent,
+  /**
+   * Wraps each block's rendered fragment in a `data-cms-block-id` marker
+   * (docs/theme_aware_prd.md §24) so the dashboard's Builder can tell which
+   * DOM region came from which block, for click-to-select/insert in the
+   * full-screen editor. `false` for the production static build (and the
+   * default here) — production HTML must stay exactly what a theme's own
+   * markup produces, with nothing extra. Only `PreviewRendererService`,
+   * which exists solely to feed the Builder's editing iframe, passes `true`.
+   */
+  editable = false,
 ): Promise<string> {
   const renderers = theme.blockRenderers ?? {};
   const parts: string[] = [];
@@ -58,7 +69,11 @@ export async function renderBlocks(
     // `head` is discarded on purpose — a block is a fragment inside a page
     // whose <head> the layout already owns.
     void head;
-    parts.push(body);
+    parts.push(
+      editable
+        ? `<div data-cms-block-id="${escapeHtmlAttribute(block.id)}" data-cms-block-type="${escapeHtmlAttribute(resolved.type)}">${body}</div>`
+        : body,
+    );
   }
 
   return parts.join('\n');

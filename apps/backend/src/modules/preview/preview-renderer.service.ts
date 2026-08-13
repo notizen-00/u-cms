@@ -109,6 +109,7 @@ export class PreviewRendererService {
               head: '',
               body: this.eta.renderString(source, props) as string,
             }),
+            true,
           )
         : markdownBody();
 
@@ -134,6 +135,7 @@ export class PreviewRendererService {
           this.blockRegistry,
           blockContext,
           (source, filename, props) => this.compiler.renderSource(source, filename, props),
+          true,
         )
       : markdownBody();
 

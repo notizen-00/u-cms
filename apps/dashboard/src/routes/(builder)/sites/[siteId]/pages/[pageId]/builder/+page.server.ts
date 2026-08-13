@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getPageItem, publishPageBlocks, updatePage } from '$lib/server/api/pages';
 import { getSite } from '$lib/server/api/sites';
 import { checkBlockCompatibility, listSiteBlocks } from '$lib/server/api/blocks';
+import { getThemeSettings, updateThemeSettings } from '$lib/server/api/themes';
 import { revokePreviewTokens } from '$lib/server/api/preview';
 import { ApiError } from '$lib/server/api/client';
 import type { PageBlock } from '$lib/types';
@@ -11,10 +12,11 @@ export const load: PageServerLoad = async (event) => {
 	const { siteId, pageId } = event.params;
 
 	try {
-		const [site, page, registry] = await Promise.all([
+		const [site, page, registry, themeSettings] = await Promise.all([
 			getSite(event, siteId),
 			getPageItem(event, siteId, pageId),
-			listSiteBlocks(event, siteId)
+			listSiteBlocks(event, siteId),
+			getThemeSettings(event, siteId)
 		]);
 
 		// Resolves what each block type falls back to — the builder can't work
@@ -30,6 +32,7 @@ export const load: PageServerLoad = async (event) => {
 			page,
 			registry,
 			compatibility,
+			themeSettings,
 			// Same-origin proxy, not the API directly — see that route for why.
 			previewUrl: `/sites/${siteId}/pages/${pageId}/preview`
 		};
@@ -120,5 +123,35 @@ export const actions: Actions = {
 			}
 			throw err;
 		}
+	},
+
+	/**
+	 * Saves the site-wide theme settings from the Builder's "Tema" tab —
+	 * distinct from `save`/`publish`, which only ever touch this one page's
+	 * `blocks`. Called programmatically (fetch + JSON), not a native form
+	 * submit, so — unlike `/sites/[siteId]/theme/settings`'s action — there's
+	 * no FormData to coerce back into typed values; the caller already has them.
+	 */
+	saveTheme: async (event) => {
+		const { siteId } = event.params;
+		const formData = await event.request.formData();
+
+		let values: Record<string, unknown>;
+		try {
+			values = JSON.parse(String(formData.get('values') ?? '{}'));
+		} catch {
+			return fail(400, { message: 'Nilai pengaturan tema tidak valid.' });
+		}
+
+		try {
+			await updateThemeSettings(event, siteId, values);
+		} catch (err) {
+			if (err instanceof ApiError) {
+				return fail(err.status || 400, { message: err.message, errors: err.fieldErrors });
+			}
+			throw err;
+		}
+
+		return { themeSaved: true, themeSavedAt: Date.now() };
 	}
 };

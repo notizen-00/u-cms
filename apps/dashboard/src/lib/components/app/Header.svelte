@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import type { AuthUser, Site } from '$lib/types';
+	import type { AuthUser, Site, Theme } from '$lib/types';
 	import SiteSwitcher from './SiteSwitcher.svelte';
 
 	import Bell from '@lucide/svelte/icons/bell';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
+	import Palette from '@lucide/svelte/icons/palette';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Settings from '@lucide/svelte/icons/settings';
 
@@ -15,13 +16,25 @@
 		user,
 		sites,
 		activeSite,
+		activeTheme = null,
+		homepagePageId = null,
 		onMenuToggle = () => {}
 	}: {
 		user: AuthUser;
 		sites: Site[];
 		activeSite: Site | null;
+		activeTheme?: Theme | null;
+		homepagePageId?: string | null;
 		onMenuToggle?: () => void;
 	} = $props();
+
+	/** Builder is only full-screen once its own route group is live — see the redesign plan. Falls back to the pages list on a brand-new site with no homepage yet. */
+	const builderHref = $derived(
+		activeSite &&
+			(homepagePageId
+				? `/sites/${activeSite.id}/pages/${homepagePageId}/builder`
+				: `/sites/${activeSite.id}/pages`)
+	);
 
 	const pathname = $derived(page.url.pathname);
 
@@ -57,6 +70,19 @@
 		</button>
 
 		<SiteSwitcher {sites} {activeSite} />
+
+		{#if activeSite && builderHref}
+			<a
+				href={builderHref}
+				title={homepagePageId
+					? `Buka Builder — tema ${activeTheme?.name ?? activeSite.themeId}`
+					: 'Situs ini belum punya halaman utama'}
+				class="hidden items-center gap-1.5 rounded-full border border-[#dce3ec] bg-[#f8fafc] px-3 h-8 text-[11px] font-medium text-[#075985] transition-colors hover:border-[#075985] hover:bg-[#eef6fb] sm:flex"
+			>
+				<Palette size={13} strokeWidth={1.8} />
+				<span class="max-w-32 truncate">{activeTheme?.name ?? activeSite.themeId}</span>
+			</a>
+		{/if}
 	</div>
 
 	<nav class="hidden h-full items-center gap-5 md:flex">

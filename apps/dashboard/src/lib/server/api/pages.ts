@@ -8,6 +8,12 @@ export function listPages(event: MinimalEvent, siteId: string): Promise<PageItem
 	return apiFetch<PageItem[]>(event, `/sites/${siteId}/pages`);
 }
 
+/** No dedicated backend endpoint for this — same `listPages` + find idiom used elsewhere (e.g. pages/[pageId]/+page.svelte's `otherPages`). */
+export async function getHomepagePage(event: MinimalEvent, siteId: string): Promise<PageItem | null> {
+	const pages = await listPages(event, siteId);
+	return pages.find((page) => page.isHomepage) ?? null;
+}
+
 export function getPageItem(event: MinimalEvent, siteId: string, pageId: string): Promise<PageItem> {
 	return apiFetch<PageItem>(event, `/sites/${siteId}/pages/${pageId}`);
 }
