@@ -54,8 +54,22 @@ describe('renderBlocks', () => {
     renderComponent = await makeRenderComponent();
   });
 
-  const run = (blocks: PageBlock[], theme: unknown, themeId: string, editable = false) =>
-    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent, editable);
+  const run = async (blocks: PageBlock[], theme: unknown, themeId: string, editable = false) => {
+    const result = await renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent, editable);
+    return result.body;
+  };
+
+  it('emits no fallback styles when every block is theme-rendered', async () => {
+    const result = await renderBlocks(
+      [{ id: 'h1', type: 'core.hero', props: { title: 'Judul' } }],
+      joyTheme as CmsTheme<string>,
+      JOY,
+      registry,
+      context,
+      renderComponent,
+    );
+    expect(result.styles).toBe('');
+  });
 
   it("renders a theme block with that theme's own markup", async () => {
     const html = await run(
@@ -175,8 +189,10 @@ describe('renderBlocks (generic core fallback)', () => {
   const renderComponent = async (): Promise<{ head: string; body: string }> => {
     throw new Error('theme renderer should not be invoked for a core-fallback block');
   };
-  const run = (blocks: PageBlock[], theme: unknown, themeId: string) =>
-    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+  const run = async (blocks: PageBlock[], theme: unknown, themeId: string) => {
+    const result = await renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+    return result.body;
+  };
 
   it('renders core.image generically when the theme has no renderer for it', async () => {
     const html = await run(
@@ -187,6 +203,27 @@ describe('renderBlocks (generic core fallback)', () => {
 
     expect(html).toContain('src="https://x.test/a.jpg"');
     expect(html).toContain('alt="Deskripsi"');
+    expect(html).toContain('cms-block-image');
+  });
+
+  it('returns the shared fallback stylesheet once, not per block, in `styles`', async () => {
+    const result = await renderBlocks(
+      [
+        { id: 'i1', type: 'core.image', props: { src: 'https://x.test/a.jpg' } },
+        { id: 'i2', type: 'core.image', props: { src: 'https://x.test/b.jpg' } },
+      ],
+      joyTheme as CmsTheme<string>,
+      JOY,
+      registry,
+      context,
+      renderComponent,
+    );
+
+    expect(result.styles).toContain('.cms-block-image');
+    expect(result.styles).toContain('--cms-block-accent:#7c3aed'); // context's theme.primaryColor
+    // One stylesheet, not one concatenated per block — the `:root` variable
+    // declaration is the giveaway, since only the sheet itself repeats it.
+    expect(result.styles.match(/:root\{--cms-block-accent/g)).toHaveLength(1);
   });
 
   it('renders core.button and core.gallery generically', async () => {

@@ -171,10 +171,30 @@ img { max-width: 100%; height: auto; display: block; }
   box-shadow: 0 12px 24px -8px color-mix(in srgb, var(--primary) 70%, transparent);
 }
 /* Page Builder hero block (docs/theme_aware_prd.md §17) — same .hero shell as
-   the home layout, plus a centered variant editors can pick per page. */
+   the home layout, plus a centered variant and an optional background image
+   editors can pick per page. */
 .hero.align-center { text-align: center; }
 .hero.align-center p { margin-left: auto; margin-right: auto; }
 .hero.align-center .btn { margin: 0 auto; }
+.hero--image { color: #fff; }
+.hero--image h1 { color: #fff; }
+.hero--image p { color: rgba(255,255,255,.85); }
+.hero--image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,.55);
+  z-index: 1;
+}
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.hero--image .wrap { position: relative; z-index: 2; }
 
 /* Sections */
 main { padding: 56px 0 80px; }

@@ -3,7 +3,22 @@ import type { PageBlock } from '@unej-cms/sdk-content';
 import { blockNamespace, CORE_BLOCK_NAMESPACE } from '@unej-cms/sdk-ui';
 import type { BlockRegistryService } from '../../blocks/block-registry.service';
 import { escapeHtmlAttribute } from './plugin-assets';
-import { renderCoreBlockFallback } from './core-block-fallback';
+import { buildCoreBlockFallbackStyles, coreBlockAccentColor, renderCoreBlockFallback } from './core-block-fallback';
+
+/**
+ * `body` is the block content to place wherever the caller already puts it.
+ * `styles` is `''` unless at least one block on this page used the CMS's
+ * generic core-block fallback, in which case it's the one shared stylesheet
+ * those blocks' classes need — meant for the caller to inject into `<head>`
+ * *once* per page (see EtaSiteRenderer/SvelteSiteRenderer/PreviewRendererService),
+ * not repeated per block. Blocks a theme renders itself carry their own
+ * styling already (Svelte scoped `<style>`, or the theme's own stylesheet)
+ * and never contribute to `styles`.
+ */
+export interface RenderBlocksResult {
+  readonly body: string;
+  readonly styles: string;
+}
 
 /** Ambient data every block component receives, mirroring what layouts get. */
 export interface BlockRenderContext {
@@ -47,9 +62,10 @@ export async function renderBlocks(
    * which exists solely to feed the Builder's editing iframe, passes `true`.
    */
   editable = false,
-): Promise<string> {
+): Promise<RenderBlocksResult> {
   const renderers = theme.blockRenderers ?? {};
   const parts: string[] = [];
+  let usedCoreFallback = false;
 
   for (const block of blocks) {
     const resolved = resolveRenderer(block.type, renderers, themeId, registry);
@@ -89,10 +105,14 @@ export async function renderBlocks(
       // half-drawn block on a live site is worse than an absent one.
       continue;
     }
+    usedCoreFallback = true;
     parts.push(wrapIfEditable(editable, block.id, coreType!, fallbackHtml));
   }
 
-  return parts.join('\n');
+  return {
+    body: parts.join('\n'),
+    styles: usedCoreFallback ? buildCoreBlockFallbackStyles(coreBlockAccentColor(context)) : '',
+  };
 }
 
 function wrapIfEditable(editable: boolean, blockId: string, resolvedType: string, body: string): string {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCoreBlockFallback } from './core-block-fallback';
+import { buildCoreBlockFallbackStyles, renderCoreBlockFallback } from './core-block-fallback';
 
 const context = {
   site: { name: 'Situs Uji' },
@@ -100,6 +100,47 @@ describe('renderCoreBlockFallback', () => {
     expect(html).toContain('https://x.test/2.jpg');
     expect(html).toContain('Ket');
     // Clamped to the documented 2-4 range even though 5 was requested.
-    expect(html).toContain('repeat(4,1fr)');
+    expect(html).toContain('cms-block-gallery__grid--cols-4');
+    expect(html).not.toContain('cms-block-gallery__grid--cols-5');
+  });
+
+  it('never emits an inline style= attribute — only cms-block-* classes', () => {
+    const withEverything = [
+      renderCoreBlockFallback('core.hero', { title: 'Judul', eyebrow: 'Info', image: 'https://x.test/bg.jpg', ctaLabel: 'Mulai', ctaUrl: '/mulai', align: 'center' }, context),
+      renderCoreBlockFallback('core.text', { content: '<p>x</p>' }, context),
+      renderCoreBlockFallback('core.image', { src: 'https://x.test/a.jpg' }, context),
+      renderCoreBlockFallback('core.video', { src: 'https://x.test/v.mp4' }, context),
+      renderCoreBlockFallback('core.button', { label: 'Daftar', url: '/daftar', variant: 'outline' }, context),
+      renderCoreBlockFallback('core.search', {}, context),
+      renderCoreBlockFallback('core.news', { limit: 6 }, context),
+      renderCoreBlockFallback('core.events', {}, context),
+      renderCoreBlockFallback('core.gallery', { images: [{ url: 'https://x.test/1.jpg' }] }, context),
+    ].join('');
+
+    expect(withEverything).not.toContain('style=');
+    expect(withEverything).toContain('cms-block-hero--image');
+    expect(withEverything).toContain('cms-block-hero--center');
+    expect(withEverything).toContain('cms-block-btn--outline');
+  });
+});
+
+describe('buildCoreBlockFallbackStyles', () => {
+  it('embeds the given accent color as a CSS custom property', () => {
+    const css = buildCoreBlockFallbackStyles('#7c3aed');
+    expect(css).toContain('--cms-block-accent:#7c3aed');
+    expect(css).toContain('.cms-block-btn{');
+    expect(css).toContain('.cms-block-hero{');
+    expect(css).toContain('.cms-block-gallery__grid--cols-4{');
+  });
+
+  it('falls back to the default color instead of letting an unsafe value break out of the declaration', () => {
+    const css = buildCoreBlockFallbackStyles('red; } body { display:none } /*');
+    expect(css).toContain('--cms-block-accent:#075985');
+    expect(css).not.toContain('display:none');
+  });
+
+  it('still accepts rgb()/hsl() color functions', () => {
+    const css = buildCoreBlockFallbackStyles('rgb(124, 58, 237)');
+    expect(css).toContain('--cms-block-accent:rgb(124, 58, 237)');
   });
 });

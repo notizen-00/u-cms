@@ -11,7 +11,8 @@
  * render time rather than half-drawn; add a template here to support one.
  */
 
-const heroBlock = `<section class="hero<% if (it.props.align === 'center') { %> align-center<% } %>"<% if (it.props.image) { %> style="background-image:linear-gradient(180deg, rgba(15,23,42,.55), rgba(15,23,42,.55)), url('<%= it.props.image %>');background-size:cover;background-position:center"<% } %>>
+const heroBlock = `<section class="hero<% if (it.props.align === 'center') { %> align-center<% } %><% if (it.props.image) { %> hero--image<% } %>">
+<% if (it.props.image) { %><img class="hero__bg" src="<%= it.props.image %>" alt=""><% } %>
 <div class="wrap">
 <% if (it.props.eyebrow) { %><span class="eyebrow"><%= it.props.eyebrow %></span><% } %>
 <h1><%= it.props.title || it.site.name %></h1>

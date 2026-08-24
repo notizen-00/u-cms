@@ -59,8 +59,8 @@ export class SvelteSiteRenderer implements SiteRenderer {
     const renderPageBody = async (page: {
       blocks?: readonly PageBlock[];
       bodyMarkdown: string;
-    }): Promise<string> => {
-      if (!page.blocks?.length) return renderMarkdown(page.bodyMarkdown);
+    }): Promise<{ body: string; styles: string }> => {
+      if (!page.blocks?.length) return { body: renderMarkdown(page.bodyMarkdown), styles: '' };
       return renderBlocks(
         page.blocks,
         theme,
@@ -100,6 +100,11 @@ export class SvelteSiteRenderer implements SiteRenderer {
       bodyHtml: string,
       seo: PageSeo,
       isHome = false,
+      // Non-empty only when the page's blocks needed the CMS's generic
+      // core-block fallback styling (see renderPageBody/block-content-renderer's
+      // `RenderBlocksResult.styles`) — injected into `<head>` once here rather
+      // than duplicated per block.
+      extraStyles = '',
     ): Promise<void> => {
       const dir = relativePath ? join(outputDir, relativePath) : outputDir;
       await mkdir(dir, { recursive: true });
@@ -118,7 +123,13 @@ export class SvelteSiteRenderer implements SiteRenderer {
       // reskin a plugin's block to match its own look, instead of needing
       // `!important` or higher specificity to override a later, "winning"
       // plugin stylesheet.
-      const completeHead = [pluginAssetTags.head, head].filter(Boolean).join('\n');
+      const completeHead = [
+        pluginAssetTags.head,
+        extraStyles ? `<style>${extraStyles}</style>` : '',
+        head,
+      ]
+        .filter(Boolean)
+        .join('\n');
       const completeBody = [body, pluginAssetTags.body].filter(Boolean).join('\n');
       const html = `<!DOCTYPE html>\n<html lang="id">\n<head>\n${completeHead}\n</head>\n<body>\n${completeBody}\n</body>\n</html>\n`;
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
@@ -134,11 +145,15 @@ export class SvelteSiteRenderer implements SiteRenderer {
     // A block-authored homepage brings its own full-width sections from the
     // theme's components, so it must NOT be squeezed into the narrow
     // `.wrap/.prose` reading column that Markdown bodies need.
-    const homeBody = homepage
-      ? homepage.blocks?.length
-        ? await renderPageBody(homepage)
-        : `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`
-      : (await renderLayout('home', { news: data.news, pages: data.pages })).body;
+    let homeBody: string;
+    let homeStyles = '';
+    if (homepage?.blocks?.length) {
+      ({ body: homeBody, styles: homeStyles } = await renderPageBody(homepage));
+    } else if (homepage) {
+      homeBody = `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`;
+    } else {
+      homeBody = (await renderLayout('home', { news: data.news, pages: data.pages })).body;
+    }
     await writePage(
       '',
       'Beranda',
@@ -149,6 +164,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
         baseKeywords,
       }),
       true,
+      homeStyles,
     );
 
     const newsListBody = (await renderLayout('news-list', { news: data.news })).body;
@@ -181,8 +197,9 @@ export class SvelteSiteRenderer implements SiteRenderer {
 
     for (const page of data.pages) {
       if (page.isHomepage) continue;
+      const { body: pageBody, styles: pageStyles } = await renderPageBody(page);
       const { body } = await renderLayout('page', {
-        item: { ...page, bodyHtml: await renderPageBody(page) },
+        item: { ...page, bodyHtml: pageBody },
       });
       await writePage(
         page.slug,
@@ -192,6 +209,8 @@ export class SvelteSiteRenderer implements SiteRenderer {
           fallbackMarkdown: page.bodyMarkdown,
           baseKeywords,
         }),
+        false,
+        pageStyles,
       );
     }
   }

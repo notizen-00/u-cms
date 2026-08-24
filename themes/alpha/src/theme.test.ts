@@ -1,0 +1,160 @@
+import { describe, expect, it } from "vitest";
+import { alphaTheme } from "./theme.js";
+
+describe("alphaTheme", () => {
+  it("is a valid, frozen theme with all 5 layouts", () => {
+    expect(alphaTheme.manifest.id).toBe("unej.theme-alpha");
+    expect(alphaTheme.layouts).toHaveLength(5);
+    expect(alphaTheme.layouts.map((layout) => layout.id).sort()).toEqual(
+      ["home", "layout", "news-list", "news-single", "page"].sort(),
+    );
+  });
+
+  it("declares header/footer regions and primary/footer menu locations", () => {
+    expect(alphaTheme.regions?.map((region) => region.id)).toEqual(["header", "footer"]);
+    expect(alphaTheme.menuLocations?.map((location) => location.id)).toEqual(["primary", "footer"]);
+  });
+
+  it("exposes hero and stats-strip settings", () => {
+    expect(alphaTheme.settings?.heroBackgroundVideo?.type).toBe("media");
+    expect(alphaTheme.settings?.heroBackgroundImage?.type).toBe("media");
+    expect(alphaTheme.settings?.statItems?.type).toBe("array");
+    const heroHeadline = alphaTheme.settings?.heroHeadline;
+    expect(heroHeadline && "default" in heroHeadline ? heroHeadline.default : undefined).toContain(
+      "MEDAN PERTEMPURAN",
+    );
+  });
+
+  it("declares fixed design tokens — dark background, square-ish radius", () => {
+    expect(alphaTheme.tokens?.colors?.background).toBe("#0a0a0c");
+    expect(alphaTheme.tokens?.radius?.button).toBe("2px");
+  });
+
+  it("declares a 'default' template mapped to the 'page' layout", () => {
+    expect(alphaTheme.templates).toHaveLength(1);
+    expect(alphaTheme.templates?.[0]?.layout).toBe("page");
+  });
+
+  it("declares alpha.battle-hero, alpha.stats-strip, and alpha.mode-grid, each with a core fallback", () => {
+    const ids = alphaTheme.blocks?.map((block) => block.id) ?? [];
+    expect(ids).toEqual(["alpha.battle-hero", "alpha.stats-strip", "alpha.mode-grid"]);
+    expect(alphaTheme.blocks?.find((block) => block.id === "alpha.battle-hero")?.fallback).toBe("core.hero");
+    expect(alphaTheme.blocks?.find((block) => block.id === "alpha.stats-strip")?.fallback).toBe("core.text");
+    expect(alphaTheme.blocks?.find((block) => block.id === "alpha.mode-grid")?.fallback).toBe("core.gallery");
+  });
+
+  it("starts a new site with a battle hero, stats strip, and news homepage", () => {
+    expect(alphaTheme.defaultHomepage?.map((block) => block.type)).toEqual([
+      "alpha.battle-hero",
+      "alpha.stats-strip",
+      "core.news",
+    ]);
+  });
+
+  it("has no leftover placeholder markers in the layout source (substitution ran)", () => {
+    const layout = alphaTheme.layouts.find((candidate) => candidate.id === "layout");
+    expect(layout?.render).not.toContain("__SCROLL_REVEAL_SCRIPT__");
+    expect(layout?.render).not.toContain("__HERO_VIDEO_SCRIPT__");
+    expect(layout?.render).not.toContain("__THEME_STYLES__");
+    expect(layout?.render).toContain("IntersectionObserver");
+    expect(layout?.render).toContain("btn-cut");
+  });
+});
+
+describe("layout rendering (Svelte SSR)", () => {
+  const findLayout = (id: string) => {
+    const layout = alphaTheme.layouts.find((candidate) => candidate.id === id);
+    if (!layout) throw new Error(`layout "${id}" not found`);
+    return layout.render;
+  };
+
+  async function renderSvelte(source: string, props: Record<string, unknown>) {
+    const { compile } = await import("svelte/compiler");
+    const { render } = await import("svelte/server");
+    const { js } = compile(source, { generate: "server", filename: "Test.svelte" });
+
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath, pathToFileURL } = await import("node:url");
+
+    const cacheDir = join(dirname(fileURLToPath(import.meta.url)), "..", ".test-svelte-cache");
+    await mkdir(cacheDir, { recursive: true });
+    const file = join(cacheDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+    await writeFile(file, js.code, "utf-8");
+    const mod = (await import(pathToFileURL(file).href)) as { default: unknown };
+
+    const renderComponent = render as unknown as (
+      component: unknown,
+      options: { props: Record<string, unknown> },
+    ) => { head: string; body: string };
+    return renderComponent(mod.default, { props });
+  }
+
+  const site = { name: "Situs Uji", slug: "test", logoUrl: null, faviconUrl: null };
+  const theme = {
+    primaryColor: "#f2a900",
+    secondaryColor: "#e1261c",
+    heroEyebrow: "Eyebrow uji",
+    heroHeadline: "Headline uji",
+    heroDescription: "Deskripsi uji",
+    heroCtaLabel: "Ajakan uji",
+    heroCtaUrl: "/mulai",
+    statItems: [{ value: "1JT+", label: "PEMAIN" }],
+    showSearch: true,
+  };
+
+  it("renders the outer layout with title, dropdown nav, and injected body", async () => {
+    const { head, body } = await renderSvelte(findLayout("layout"), {
+      site,
+      theme,
+      menus: {
+        primary: [{ label: "Beranda", url: "/", newTab: false, clickable: true, children: [] }],
+      },
+      tokensCss: ":root{--theme-background:#0a0a0c;}",
+      title: "Beranda",
+      body: "<p>halo</p>",
+      seo: { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null },
+    });
+
+    expect(head).toContain("<title>Beranda | Situs Uji</title>");
+    expect(head).toContain('<meta name="description" content="Deskripsi uji."/>');
+    expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
+    expect(body).toContain("Beranda");
+    expect(body).toContain("<p>halo</p>");
+  });
+
+  it("renders the home layout with hero, stats, news, and info cards", async () => {
+    const { body } = await renderSvelte(findLayout("home"), {
+      site,
+      theme: { ...theme, heroBackgroundVideo: "/hero.mp4", heroBackgroundImage: "/poster.jpg" },
+      news: [{ slug: "a", title: "Berita A", excerpt: "Ringkasan A", categories: [], featuredImageUrl: null, publishedAt: null }],
+      pages: [{ slug: "tentang", title: "Tentang" }],
+    });
+
+    expect(body).toContain("Eyebrow uji");
+    expect(body).toContain("Headline uji");
+    expect(body).toContain('src="/hero.mp4"');
+    expect(body).toContain('poster="/poster.jpg"');
+    expect(body).toContain("1JT+");
+    expect(body).toContain("PEMAIN");
+    expect(body).toContain("Berita A");
+    expect(body).toContain("Tentang");
+  });
+
+  it("renders the news-single layout with taxonomy pills", async () => {
+    const { body } = await renderSvelte(findLayout("news-single"), {
+      item: {
+        title: "Judul Berita",
+        publishedAt: "2026-01-01",
+        categories: [{ name: "Kampus", slug: "kampus" }],
+        tags: [{ name: "unej", slug: "unej" }],
+        bodyHtml: "<p>isi</p>",
+      },
+    });
+
+    expect(body).toContain("Judul Berita");
+    expect(body).toContain("Kampus");
+    expect(body).toContain("#unej");
+    expect(body).toContain("<p>isi</p>");
+  });
+});

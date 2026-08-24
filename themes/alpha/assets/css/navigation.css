@@ -1,0 +1,71 @@
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.main-nav > a,
+.main-nav .nav-item > a,
+.main-nav .nav-item-label {
+  display: inline-block;
+  padding: 8px 14px;
+  font-family: var(--theme-typography-heading);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--theme-muted);
+  transition: color 0.15s ease;
+}
+.main-nav > a:hover,
+.main-nav .nav-item > a:hover {
+  color: var(--primary);
+}
+.main-nav .nav-item-label {
+  cursor: default;
+}
+.main-nav .nav-item {
+  position: relative;
+}
+.main-nav .has-children > a::after,
+.main-nav .has-children > .nav-item-label::after {
+  content: " ▾";
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+.main-nav .sub-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-line);
+  padding: 8px;
+  min-width: 200px;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+.main-nav .sub-menu a,
+.main-nav .sub-menu .nav-item-label {
+  display: block;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.main-nav .sub-menu .nav-item {
+  width: 100%;
+}
+.main-nav .sub-menu .sub-menu {
+  top: -8px;
+  left: 100%;
+}
+.main-nav .nav-item:hover > .sub-menu,
+.main-nav .nav-item:focus-within > .sub-menu {
+  display: flex;
+}
+.main-nav .sub-menu .has-children > a::after,
+.main-nav .sub-menu .has-children > .nav-item-label::after {
+  content: " ▸";
+  font-size: 0.7em;
+}

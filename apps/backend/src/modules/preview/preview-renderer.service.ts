@@ -8,6 +8,7 @@ import { news, pages, sites } from '../../database/schema';
 import { BlockRegistryService } from '../blocks/block-registry.service';
 import { renderBlocks } from '../builder/render/block-content-renderer';
 import { ContentRenderer } from '../builder/render/content-renderer';
+import { injectPluginAssetTags } from '../builder/render/plugin-assets';
 import { buildPageSeo } from '../builder/render/seo';
 import { SvelteCompilerService } from '../builder/render/svelte-compiler.service';
 import { resolveThemeVars } from '../builder/render/theme-vars';
@@ -98,7 +99,7 @@ export class PreviewRendererService {
       // `publishedBlocks` — preview exists to show unsaved-to-production work
       // (docs/theme_aware_prd.md §16), so rendering the published snapshot
       // instead would defeat the entire feature.
-      const body = page.blocks?.length
+      const { body, styles } = page.blocks?.length
         ? await renderBlocks(
             page.blocks,
             theme,
@@ -111,12 +112,12 @@ export class PreviewRendererService {
             }),
             true,
           )
-        : markdownBody();
+        : { body: markdownBody(), styles: '' };
 
       // Unlike Svelte's `render()`, an Eta `layout` template already emits a
       // complete `<!DOCTYPE html>...</html>` document (see e.g.
       // themes/default/src/layouts.ts) — nothing further to wrap it in.
-      return this.eta.renderString(layoutSource, {
+      const html = this.eta.renderString(layoutSource, {
         site: siteData,
         theme: themeVars,
         menus: {},
@@ -125,9 +126,15 @@ export class PreviewRendererService {
         body,
         seo,
       }) as string;
+
+      // Only non-empty when a block on this page used the CMS's generic
+      // core-block fallback (RenderBlocksResult.styles) — injected into
+      // `<head>` the same way plugin assets are, rather than baked into the
+      // theme's own layout template.
+      return styles ? injectPluginAssetTags(html, { head: `<style>${styles}</style>`, body: '' }) : html;
     }
 
-    const body = page.blocks?.length
+    const { body, styles } = page.blocks?.length
       ? await renderBlocks(
           page.blocks,
           theme,
@@ -137,7 +144,7 @@ export class PreviewRendererService {
           (source, filename, props) => this.compiler.renderSource(source, filename, props),
           true,
         )
-      : markdownBody();
+      : { body: markdownBody(), styles: '' };
 
     const rendered = await this.compiler.renderSource(layoutSource, 'layout.svelte', {
       site: siteData,
@@ -150,7 +157,8 @@ export class PreviewRendererService {
       seo,
     });
 
-    return `<!DOCTYPE html>\n<html lang="id">\n<head>\n${rendered.head}\n</head>\n<body>\n${rendered.body}\n</body>\n</html>\n`;
+    const completeHead = [styles ? `<style>${styles}</style>` : '', rendered.head].filter(Boolean).join('\n');
+    return `<!DOCTYPE html>\n<html lang="id">\n<head>\n${completeHead}\n</head>\n<body>\n${rendered.body}\n</body>\n</html>\n`;
   }
 }
 

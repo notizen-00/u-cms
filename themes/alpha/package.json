@@ -1,0 +1,41 @@
+{
+  "name": "@unej-cms/theme-alpha",
+  "version": "1.0.0",
+  "description": "Official Alpha UNEJ CMS theme: dark tactical/esports aesthetic (battle royale-style hero, stats strip, game-mode grid). Authored as real Svelte components, rendered via Svelte SSR (apps/backend's SvelteSiteRenderer). CSS lives in assets/css/*.css, concatenated at build time — never one giant inline stylesheet.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": ["dist", "assets"],
+  "sideEffects": false,
+  "scripts": {
+    "generate": "node scripts/generate-svelte-sources.mjs && node scripts/generate-theme-styles.mjs",
+    "build": "npm run generate && tsup",
+    "dev": "npm run generate && tsup --watch",
+    "typecheck": "npm run generate && tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@unej-cms/sdk-core": "workspace:*",
+    "@unej-cms/sdk-theme": "workspace:*",
+    "@unej-cms/sdk-ui": "workspace:*"
+  },
+  "devDependencies": {
+    "svelte": "^5.56.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

@@ -59,8 +59,8 @@ export class EtaSiteRenderer implements SiteRenderer {
     const renderPageBody = async (page: {
       blocks?: readonly PageBlock[];
       bodyMarkdown: string;
-    }): Promise<string> => {
-      if (!page.blocks?.length) return renderMarkdown(page.bodyMarkdown);
+    }): Promise<{ body: string; styles: string }> => {
+      if (!page.blocks?.length) return { body: renderMarkdown(page.bodyMarkdown), styles: '' };
       return renderBlocks(
         page.blocks,
         theme,
@@ -103,14 +103,20 @@ export class EtaSiteRenderer implements SiteRenderer {
       title: string,
       body: string,
       seo: PageSeo,
+      // Non-empty only when the page's blocks needed the CMS's generic
+      // core-block fallback styling (see renderPageBody/block-content-renderer's
+      // `RenderBlocksResult.styles`) — injected into `<head>` once here rather
+      // than duplicated per block.
+      extraStyles = '',
     ): Promise<void> => {
       const dir = relativePath ? join(outputDir, relativePath) : outputDir;
       await mkdir(dir, { recursive: true });
       const renderedHtml = renderLayout('layout', { title, body, seo });
-      const html = injectPluginAssetTags(
-        renderedHtml,
-        renderPluginAssetTags(emittedPluginAssets, relativePath),
-      );
+      const pluginTags = renderPluginAssetTags(emittedPluginAssets, relativePath);
+      const html = injectPluginAssetTags(renderedHtml, {
+        head: [extraStyles ? `<style>${extraStyles}</style>` : '', pluginTags.head].filter(Boolean).join('\n'),
+        body: pluginTags.body,
+      });
       await writeFile(join(dir, 'index.html'), html, 'utf-8');
     };
 
@@ -125,8 +131,9 @@ export class EtaSiteRenderer implements SiteRenderer {
     // theme's block templates, so it must NOT be squeezed into the narrow
     // `.wrap/.prose` reading column that Markdown bodies need.
     let homeBody: string;
+    let homeStyles = '';
     if (homepage?.blocks?.length) {
-      homeBody = await renderPageBody(homepage);
+      ({ body: homeBody, styles: homeStyles } = await renderPageBody(homepage));
     } else if (homepage) {
       homeBody = `<div class="wrap"><div class="prose">${renderMarkdown(homepage.bodyMarkdown)}</div></div>`;
     } else {
@@ -141,6 +148,7 @@ export class EtaSiteRenderer implements SiteRenderer {
         fallbackMarkdown: homepage?.bodyMarkdown,
         baseKeywords,
       }),
+      homeStyles,
     );
 
     const newsListBody = renderLayout('news-list', { news: data.news });
@@ -173,9 +181,8 @@ export class EtaSiteRenderer implements SiteRenderer {
 
     for (const page of data.pages) {
       if (page.isHomepage) continue;
-      const body = renderLayout('page', {
-        item: { ...page, bodyHtml: await renderPageBody(page) },
-      });
+      const { body: pageBody, styles: pageStyles } = await renderPageBody(page);
+      const body = renderLayout('page', { item: { ...page, bodyHtml: pageBody } });
       await writePage(
         page.slug,
         page.title,
@@ -184,6 +191,7 @@ export class EtaSiteRenderer implements SiteRenderer {
           fallbackMarkdown: page.bodyMarkdown,
           baseKeywords,
         }),
+        pageStyles,
       );
     }
   }

@@ -37,8 +37,10 @@ describe('renderBlocks (Eta)', () => {
     body: eta.renderString(source, props) as string,
   });
 
-  const run = (blocks: PageBlock[], theme: unknown, themeId: string) =>
-    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+  const run = async (blocks: PageBlock[], theme: unknown, themeId: string) => {
+    const result = await renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+    return result.body;
+  };
 
   it("renders core.hero, core.text, and core.news with the default theme's own Eta templates", async () => {
     const html = await run(
