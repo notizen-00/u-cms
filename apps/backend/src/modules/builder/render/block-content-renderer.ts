@@ -1,7 +1,9 @@
 import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
+import { blockNamespace, CORE_BLOCK_NAMESPACE } from '@unej-cms/sdk-ui';
 import type { BlockRegistryService } from '../../blocks/block-registry.service';
 import { escapeHtmlAttribute } from './plugin-assets';
+import { renderCoreBlockFallback } from './core-block-fallback';
 
 /** Ambient data every block component receives, mirroring what layouts get. */
 export interface BlockRenderContext {
@@ -51,32 +53,52 @@ export async function renderBlocks(
 
   for (const block of blocks) {
     const resolved = resolveRenderer(block.type, renderers, themeId, registry);
-    if (!resolved) {
-      // No renderer, and no fallback with one either. Skipping beats emitting
+    if (resolved) {
+      const { head, body } = await renderComponent(resolved.source, `${resolved.type}.svelte`, {
+        props: block.props ?? {},
+        site: context.site,
+        theme: context.theme,
+        menus: context.menus,
+        news: context.news,
+        pages: context.pages,
+      });
+      // `head` is discarded on purpose — a block is a fragment inside a page
+      // whose <head> the layout already owns.
+      void head;
+      parts.push(wrapIfEditable(editable, block.id, resolved.type, body));
+      continue;
+    }
+
+    // The theme (and its fallback chain) has no component for this block.
+    // Rather than skip outright, fall back to the CMS's own generic markup
+    // for whatever the fallback chain resolves to *if* that's still a
+    // `core.*` type — core blocks are meant to work on every theme
+    // regardless of whether that theme bothered to draw one itself
+    // (docs/theme_aware_prd.md §5.1). A foreign theme-specific type with no
+    // core-compatible fallback still has nothing sensible to fall back to,
+    // and stays skipped exactly as before.
+    const fallbackDefinition = registry.resolveFallback(themeId, block.type);
+    const coreType =
+      fallbackDefinition && blockNamespace(String(fallbackDefinition.id)) === CORE_BLOCK_NAMESPACE
+        ? String(fallbackDefinition.id)
+        : undefined;
+    const fallbackHtml = coreType ? renderCoreBlockFallback(coreType, block.props ?? {}, context) : undefined;
+    if (fallbackHtml === undefined) {
+      // No renderer, and no generic fallback either. Skipping beats emitting
       // an unstyled section: the content is still safe in the database, and a
       // half-drawn block on a live site is worse than an absent one.
       continue;
     }
-
-    const { head, body } = await renderComponent(resolved.source, `${resolved.type}.svelte`, {
-      props: block.props ?? {},
-      site: context.site,
-      theme: context.theme,
-      menus: context.menus,
-      news: context.news,
-      pages: context.pages,
-    });
-    // `head` is discarded on purpose — a block is a fragment inside a page
-    // whose <head> the layout already owns.
-    void head;
-    parts.push(
-      editable
-        ? `<div data-cms-block-id="${escapeHtmlAttribute(block.id)}" data-cms-block-type="${escapeHtmlAttribute(resolved.type)}">${body}</div>`
-        : body,
-    );
+    parts.push(wrapIfEditable(editable, block.id, coreType!, fallbackHtml));
   }
 
   return parts.join('\n');
+}
+
+function wrapIfEditable(editable: boolean, blockId: string, resolvedType: string, body: string): string {
+  return editable
+    ? `<div data-cms-block-id="${escapeHtmlAttribute(blockId)}" data-cms-block-type="${escapeHtmlAttribute(resolvedType)}">${body}</div>`
+    : body;
 }
 
 /**

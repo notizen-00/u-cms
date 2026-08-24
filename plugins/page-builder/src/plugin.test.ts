@@ -6,7 +6,7 @@ import { PAGE_BUILDER_PATTERNS } from "./patterns.js";
 import { pageBuilderPlugin } from "./plugin.js";
 
 describe("pageBuilderPlugin", () => {
-  it("registers a complete, unique block catalog and standalone site styles", () => {
+  it("declares a complete, unique block catalog for the Markdown-embedded editor, kept out of the theme-aware Builder", () => {
     const ids = PAGE_BUILDER_BLOCKS.map((block) => block.id);
 
     expect(pageBuilderPlugin.manifest.id).toBe(PLUGIN_ID);
@@ -15,7 +15,11 @@ describe("pageBuilderPlugin", () => {
     for (const richId of PAGE_BUILDER_RICH_BLOCK_IDS) {
       expect(ids).toContain(`${PLUGIN_ID}.${richId}`);
     }
-    expect(pageBuilderPlugin.ui?.blocks).toBe(PAGE_BUILDER_BLOCKS);
+    // None of PAGE_BUILDER_BLOCKS' `render: "PageBuilder:<id>"` markers are
+    // real .svelte/Eta source — deliberately not offered as `ui.blocks`, or
+    // the theme-aware Page Builder would let an author add one and it would
+    // silently never render (see plugin.ts's module doc).
+    expect(pageBuilderPlugin.ui?.blocks).toBeUndefined();
     expect(pageBuilderPlugin.ui?.assets).toEqual([pageBuilderStyleAsset]);
     expect(pageBuilderStyleAsset).toMatchObject({ kind: "css", target: "site", placement: "head" });
     expect(PAGE_BUILDER_STYLES).toContain(".cms-pb-hero");

@@ -77,6 +77,8 @@ pnpm infra:up      # postgres + redis + minio
 pnpm infra:down
 ```
 
+`pnpm dev` / `pnpm dev:watch` / `pnpm start` otomatis mendeteksi kalau `pnpm infra:up` sudah menyalakan ketiganya (atau sebagian) lewat Docker, dan memakainya langsung — bukan menginstal/menjalankan Postgres/Redis/MinIO portable sendiri. Ini berlaku meski sebelumnya Anda pernah pakai jalur portable (mis. lewat `pnpm setup` tanpa Docker): begitu `infra:up` terdeteksi berjalan, deteksi ini menang atas status "portable" yang tersimpan dari run sebelumnya. Matikan dulu (`pnpm infra:down`) kalau memang ingin kembali ke instance portable.
+
 ### Setelah instalasi (kedua jalur)
 
 Buka dashboard. Instance kosong akan mengarahkan Anda ke `/setup` untuk membuat super admin dan website pertama.

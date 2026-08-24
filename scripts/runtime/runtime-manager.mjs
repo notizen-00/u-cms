@@ -29,8 +29,9 @@ import { detectPlatform } from './platform.mjs';
 import { isPortOpen } from './ports.mjs';
 import { readOwnedPid } from './process.mjs';
 import { readConfig, recordService, writeConfig } from './config.mjs';
-import { RUNTIME_DIR, RUNTIME_LOGS_DIR, RUNTIME_PIDS_DIR, servicePaths } from './paths.mjs';
+import { ROOT, RUNTIME_DIR, RUNTIME_LOGS_DIR, RUNTIME_PIDS_DIR, servicePaths } from './paths.mjs';
 import { randomAlnum } from './secrets.mjs';
+import { capture } from './shell.mjs';
 import { UserFacingError, bold, cyan, dim, green, info, ok, red, warn } from './ui.mjs';
 
 import { resolvePostgresTarget } from './postgres/manifest.mjs';
@@ -46,6 +47,32 @@ import { createMinioRuntime } from './minio/minio-runtime.mjs';
 import { probeMinioHealth } from './minio/protocol.mjs';
 
 const SERVICE_LABELS = { postgres: 'PostgreSQL', redis: 'Redis', minio: 'MinIO' };
+const INFRA_SERVICES = ['postgres', 'redis', 'minio'];
+
+/**
+ * Which of postgres/redis/minio `pnpm infra:up` currently has running via
+ * Docker Compose. Distinct from `mode: 'docker'` above (that one is for the
+ * full containerized stack, where the app itself also runs in Compose and
+ * gets in-network hostnames baked into its environment) — this is the hybrid
+ * case `ensureAll` reaches for by default: infra in Docker, `dev`/`start`
+ * running the app natively against `127.0.0.1:<published-port>`.
+ *
+ * `capture` resolves to `null` on any failure (docker not installed, not
+ * running, no compose project here, ...) — treated as "nothing detected"
+ * rather than an error, so this never blocks `dev`/`start` for the large
+ * majority of setups that don't use Docker at all.
+ */
+async function detectDockerInfra() {
+	const output = await capture('docker', ['compose', 'ps', '--status', 'running', '--services'], { cwd: ROOT });
+	if (output === null) return new Set();
+	const running = new Set(
+		output
+			.split('\n')
+			.map((line) => line.trim())
+			.filter(Boolean)
+	);
+	return new Set(INFRA_SERVICES.filter((service) => running.has(service)));
+}
 
 async function confirm(question, { yes }) {
 	if (yes || !process.stdin.isTTY) return true;
@@ -134,6 +161,14 @@ async function allRuntimes(env) {
  * leave an external/system service alone and correctly resume our own
  * still-installed portable one, instead of re-probing and possibly
  * reclassifying either one (PRD §22, §28).
+ *
+ * One exception to that stickiness: a service Docker Compose currently has
+ * running (`pnpm infra:up`) always gets re-probed instead of trusting a
+ * stale `managed: true` from an earlier, Docker-less run — otherwise a
+ * portable instance recorded before anyone ran `infra:up` would keep being
+ * (re)started forever, fighting Compose for the same port. Only applies
+ * when the caller didn't request a specific mode itself; an explicit
+ * `--infra=` flag always wins over this auto-detection.
  */
 export async function ensureAll({
 	mode = 'auto',
@@ -153,25 +188,34 @@ export async function ensureAll({
 	const targets = parseInfraTargets(env);
 	const { target: platformTarget } = detectPlatform();
 	const config = await readConfig();
+	const dockerInfra = !explicitMode && mode === 'auto' ? await detectDockerInfra() : new Set();
+	if (dockerInfra.size > 0) {
+		info(`Docker-hosted infra detected via \`pnpm infra:up\` (${[...dockerInfra].join(', ')}) — reusing it.`);
+	}
 
-	/** A prior run's recorded resolution wins unless the caller explicitly overrides it now. */
-	function effectiveMode(known) {
-		if (explicitMode || !known) return mode;
+	/** A prior run's recorded resolution wins unless the caller explicitly overrides it now, or Docker Compose already has this exact service running. */
+	function effectiveMode(known, service) {
+		if (explicitMode || dockerInfra.has(service) || !known) return mode;
 		return known.managed ? 'portable' : 'system';
 	}
 
 	const plan = await Promise.all([
 		planPostgres({
-			mode: effectiveMode(config.services.postgres),
+			mode: effectiveMode(config.services.postgres, 'postgres'),
 			wasCreated: backendEnvWasCreated,
 			target: targets.postgres,
 			platformTarget,
 			known: config.services.postgres,
 			reconcileCredentials
 		}),
-		planRedis({ mode: effectiveMode(config.services.redis), target: targets.redis, platformTarget, known: config.services.redis }),
+		planRedis({
+			mode: effectiveMode(config.services.redis, 'redis'),
+			target: targets.redis,
+			platformTarget,
+			known: config.services.redis
+		}),
 		planMinio({
-			mode: effectiveMode(config.services.minio),
+			mode: effectiveMode(config.services.minio, 'minio'),
 			wasCreated: backendEnvWasCreated,
 			target: targets.minio,
 			platformTarget,

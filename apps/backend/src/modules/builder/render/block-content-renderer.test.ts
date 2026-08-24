@@ -3,11 +3,13 @@ import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
 import facultyTheme from '@unej-cms/theme-faculty';
 import joyTheme from '@unej-cms/theme-joy';
+import universityTheme from '@unej-cms/theme-university';
 import { BlockRegistryService } from '../../blocks/block-registry.service';
 import { renderBlocks, type BlockRenderContext } from './block-content-renderer';
 
 const FACULTY = 'unej.theme-faculty';
 const JOY = 'unej.theme-joy';
+const UNIVERSITY = 'unej.theme-university';
 
 const context: BlockRenderContext = {
   site: { name: 'Situs Uji', slug: 'uji' },
@@ -160,5 +162,71 @@ describe('renderBlocks', () => {
     const html = await run([{ id: 'h1', type: 'core.hero', props: { title: 'Judul' } }], joyTheme, JOY);
 
     expect(html).not.toContain('data-cms-block-id');
+  });
+});
+
+describe('renderBlocks (generic core fallback)', () => {
+  // Neither Joy nor Faculty declares a `blockRenderers` entry for these core
+  // types (both only implement core.hero/core.text/core.news) — this is
+  // exactly the "add a plain core.* block, nothing shows up" bug: the CMS's
+  // own generic fallback is what's expected to render it instead of the
+  // block silently vanishing.
+  const registry = new BlockRegistryService();
+  const renderComponent = async (): Promise<{ head: string; body: string }> => {
+    throw new Error('theme renderer should not be invoked for a core-fallback block');
+  };
+  const run = (blocks: PageBlock[], theme: unknown, themeId: string) =>
+    renderBlocks(blocks, theme as CmsTheme<string>, themeId, registry, context, renderComponent);
+
+  it('renders core.image generically when the theme has no renderer for it', async () => {
+    const html = await run(
+      [{ id: 'i1', type: 'core.image', props: { src: 'https://x.test/a.jpg', alt: 'Deskripsi' } }],
+      joyTheme,
+      JOY,
+    );
+
+    expect(html).toContain('src="https://x.test/a.jpg"');
+    expect(html).toContain('alt="Deskripsi"');
+  });
+
+  it('renders core.button and core.gallery generically', async () => {
+    const html = await run(
+      [
+        { id: 'b1', type: 'core.button', props: { label: 'Daftar', url: '/daftar' } },
+        {
+          id: 'g1',
+          type: 'core.gallery',
+          props: { images: [{ url: 'https://x.test/1.jpg' }, { url: 'https://x.test/2.jpg' }] },
+        },
+      ],
+      facultyTheme,
+      FACULTY,
+    );
+
+    expect(html).toContain('Daftar');
+    expect(html).toContain('href="/daftar"');
+    expect(html).toContain('https://x.test/1.jpg');
+    expect(html).toContain('https://x.test/2.jpg');
+  });
+
+  it('still skips core.columns (no slot-editing UI to populate it yet)', async () => {
+    const html = await run([{ id: 'c1', type: 'core.columns', props: { count: 2 } }], joyTheme, JOY);
+
+    expect(html).toBe('');
+  });
+
+  it('falls back through a foreign theme block to the generic core renderer when the active theme draws nothing at all', async () => {
+    // University declares no `blockRenderers` whatsoever — not even for
+    // core.hero — so a page authored under Faculty (`faculty.video-hero`,
+    // fallback: core.hero) switched to University has no theme component to
+    // reach for at any point in the chain. The generic fallback is what
+    // keeps the section visible.
+    const html = await run(
+      [{ id: 'h1', type: 'faculty.video-hero', props: { title: 'Tetap Tampil' } }],
+      universityTheme,
+      UNIVERSITY,
+    );
+
+    expect(html).toContain('Tetap Tampil');
   });
 });

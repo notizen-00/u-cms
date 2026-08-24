@@ -11,9 +11,14 @@ describe("formBuilderPlugin", () => {
     }).toThrow(TypeError);
   });
 
-  it("registers the Form block, submitForm action, and both submit triggers", () => {
-    expect(formBuilderPlugin.ui?.blocks).toHaveLength(1);
-    expect(formBuilderPlugin.ui?.blocks?.[0]?.id).toBe("unej.form-builder.form");
+  it("registers submitForm action and both submit triggers, but no theme-aware block", () => {
+    // `formBlock` (block.ts) belongs to the Markdown-embedded editor's own
+    // 'form' block type, not the theme-aware Page Builder — its
+    // `render: "FormBlockRenderer"` marker is not real .svelte/Eta source, so
+    // it's deliberately not declared under `ui.blocks` (see plugin.ts's module
+    // doc). Declaring it there would let an author add it in the theme-aware
+    // Builder and have it silently never render.
+    expect(formBuilderPlugin.ui?.blocks).toBeUndefined();
     expect(formBuilderPlugin.ui?.actions).toHaveLength(1);
     expect(formBuilderPlugin.ui?.triggers).toHaveLength(2);
   });
