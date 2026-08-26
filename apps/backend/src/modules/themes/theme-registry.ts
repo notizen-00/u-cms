@@ -1,11 +1,8 @@
 import { discoverThemes, type CmsTheme, type ThemeMetadata } from '@unej-cms/sdk-theme';
 import { join } from 'node:path';
 import alphaTheme from '@unej-cms/theme-alpha';
-import defaultTheme from '@unej-cms/theme-default';
 import facultyTheme from '@unej-cms/theme-faculty';
 import joyTheme from '@unej-cms/theme-joy';
-import premiumTheme from '@unej-cms/theme-premium';
-import universityTheme from '@unej-cms/theme-university';
 
 /** Which `SiteRenderer` implementation (see modules/builder/render/) knows how to interpret a theme's `layouts[].render`. */
 export type ThemeRenderKind = 'eta' | 'svelte';
@@ -27,9 +24,6 @@ interface InstalledTheme {
 // to, since `CmsTheme<TRender>`'s `TRender` is erased to `unknown` once
 // themes of different kinds sit in one list together.
 const INSTALLED_THEMES: readonly InstalledTheme[] = [
-  { theme: defaultTheme as CmsTheme<unknown>, renderKind: 'eta', slug: 'default' },
-  { theme: premiumTheme as CmsTheme<unknown>, renderKind: 'eta', slug: 'premium' },
-  { theme: universityTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'university' },
   { theme: facultyTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'faculty' },
   { theme: joyTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'joy' },
   { theme: alphaTheme as CmsTheme<unknown>, renderKind: 'svelte', slug: 'alpha' },
@@ -47,7 +41,7 @@ const INSTALLED_THEMES: readonly InstalledTheme[] = [
  */
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..', '..');
 
-export const DEFAULT_THEME_ID: string = defaultTheme.manifest.id;
+export const DEFAULT_THEME_ID: string = alphaTheme.manifest.id;
 
 export const THEME_CATALOG: readonly ThemeMetadata[] = discoverThemes(
   INSTALLED_THEMES.map((installed) => installed.theme),
@@ -70,7 +64,7 @@ export function resolveTheme(themeId: string): CmsTheme<unknown> {
   return findTheme(themeId) ?? findTheme(DEFAULT_THEME_ID)!;
 }
 
-/** Falls back to "eta" (the default theme's kind) alongside `resolveTheme`'s own fallback. */
+/** Falls back to "svelte" (the default theme's kind) alongside `resolveTheme`'s own fallback. */
 export function resolveThemeRenderKind(themeId: string): ThemeRenderKind {
   return findInstalledTheme(themeId)?.renderKind ?? findInstalledTheme(DEFAULT_THEME_ID)!.renderKind;
 }

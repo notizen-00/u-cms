@@ -2,16 +2,25 @@ import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
 import facultyTheme from '@unej-cms/theme-faculty';
 import joyTheme from '@unej-cms/theme-joy';
-import universityTheme from '@unej-cms/theme-university';
-import defaultTheme from '@unej-cms/theme-default';
 import { buildThemeHomepageBlocks, matchesThemeHomepage } from './homepage-blocks';
 
 const joy = joyTheme as CmsTheme<unknown>;
 const faculty = facultyTheme as CmsTheme<unknown>;
-// Declares no `defaultHomepage` — stands in for "a theme that hasn't opted
-// into a starter homepage" (docs/theme_aware_prd.md §19), as opposed to
-// `unej.theme-default`/`unej.theme-premium`, which now both declare one.
-const university = universityTheme as CmsTheme<unknown>;
+// Plain fixture with no `defaultHomepage` field at all — stands in for "a
+// theme that hasn't opted into a starter homepage" (docs/theme_aware_prd.md
+// §19). No currently installed theme actually omits one, so this is
+// deliberately synthetic rather than borrowed from a real package.
+const themeWithNoStarterHomepage = {} as CmsTheme<unknown>;
+// Plain fixture proving `buildThemeHomepageBlocks` only ever reads
+// `defaultHomepage` — it doesn't care whether the theme renders blocks via
+// Eta templates or Svelte components, so a real Eta-rendered theme isn't
+// needed to prove the "also seeds Eta themes" case below.
+const etaLikeTheme = {
+  defaultHomepage: [
+    { type: 'core.hero', props: { title: '' } },
+    { type: 'core.news', props: { title: 'Berita' } },
+  ],
+} as CmsTheme<unknown>;
 
 describe('buildThemeHomepageBlocks', () => {
   it("materialises the theme's declared starter homepage", () => {
@@ -50,7 +59,7 @@ describe('buildThemeHomepageBlocks', () => {
   });
 
   it('returns nothing for a theme that declares no starter homepage', () => {
-    expect(buildThemeHomepageBlocks(university, 'X')).toEqual([]);
+    expect(buildThemeHomepageBlocks(themeWithNoStarterHomepage, 'X')).toEqual([]);
   });
 
   it('also seeds a starter homepage for Eta themes', () => {
@@ -58,7 +67,7 @@ describe('buildThemeHomepageBlocks', () => {
     // own `blockRenderers` templates instead of `.svelte` components — the
     // Builder Runtime doesn't care which, so a starter homepage works the
     // same way for either.
-    expect(buildThemeHomepageBlocks(defaultTheme as CmsTheme<unknown>, 'X').map((b) => b.type)).toEqual([
+    expect(buildThemeHomepageBlocks(etaLikeTheme, 'X').map((b) => b.type)).toEqual([
       'core.hero',
       'core.news',
     ]);

@@ -1,4 +1,11 @@
 import { defineBlock, definePropertySchema } from "@unej-cms/sdk-ui";
+import {
+  DEFAULT_HERO_CTA_LABEL,
+  DEFAULT_HERO_DESCRIPTION,
+  DEFAULT_HERO_EYEBROW,
+  DEFAULT_HERO_HEADLINE,
+  DEFAULT_STAT_ITEMS,
+} from "./settings.js";
 
 /**
  * Blocks this theme contributes to the Page Builder (docs/theme_aware_prd.md
@@ -6,6 +13,15 @@ import { defineBlock, definePropertySchema } from "@unej-cms/sdk-ui";
  * declares a `fallback` to a `core.*` block — that is what keeps a page
  * authored here renderable after a switch to another theme, instead of the
  * section silently disappearing.
+ *
+ * Every non-media field below also carries a real `default` (the same battle
+ * royale copy `defaultHomepage` seeds a new site's homepage with) rather than
+ * an empty string/array — the Dashboard's block picker seeds a new block's
+ * `props` straight from these schema defaults (`defaultPropsFor` in
+ * apps/dashboard's block-mutations.ts), so dropping "Battle Hero" etc. onto
+ * any page already looks finished instead of blank, ready to reskin instead
+ * of ready to fill in. Media fields (`video`/`image`) are the one exception —
+ * there's no real uploaded file to default them to.
  */
 
 export const battleHeroBlock = defineBlock({
@@ -17,9 +33,9 @@ export const battleHeroBlock = defineBlock({
   extends: "core.hero",
   fallback: "core.hero",
   propertySchema: definePropertySchema({
-    eyebrow: { type: "string", label: "Teks Kecil di Atas Judul" },
-    title: { type: "string", label: "Judul Besar", required: true },
-    subtitle: { type: "string", label: "Deskripsi" },
+    eyebrow: { type: "string", label: "Teks Kecil di Atas Judul", default: DEFAULT_HERO_EYEBROW },
+    title: { type: "string", label: "Judul Besar", required: true, default: DEFAULT_HERO_HEADLINE },
+    subtitle: { type: "string", label: "Deskripsi", default: DEFAULT_HERO_DESCRIPTION },
     video: {
       type: "media",
       label: "Video Latar",
@@ -32,8 +48,8 @@ export const battleHeroBlock = defineBlock({
       description: "Tampil sebelum video dimuat, dan sebagai cadangan jika video gagal diputar / tidak diisi.",
       accept: ["image/*"],
     },
-    ctaLabel: { type: "string", label: "Label Tombol" },
-    ctaUrl: { type: "string", label: "Tautan Tombol" },
+    ctaLabel: { type: "string", label: "Label Tombol", default: DEFAULT_HERO_CTA_LABEL },
+    ctaUrl: { type: "string", label: "Tautan Tombol", default: "/news/" },
   }),
 });
 
@@ -52,9 +68,16 @@ export const statsStripBlock = defineBlock({
         value: { type: "string", label: "Angka", required: true, placeholder: "500JT+" },
         label: { type: "string", label: "Label", required: true, placeholder: "PEMAIN TERDAFTAR" },
       }),
+      default: DEFAULT_STAT_ITEMS,
     },
   }),
 });
+
+const DEFAULT_MODE_GRID_ITEMS = [
+  { title: "Battle Royale", description: "Mode klasik 100 pemain, bertahan hidup hingga akhir." },
+  { title: "Arena", description: "Pertarungan tim cepat dengan respawn tanpa akhir." },
+  { title: "Peringkat", description: "Naik peringkat musiman dan buktikan skill terbaikmu." },
+];
 
 export const modeGridBlock = defineBlock({
   id: "alpha.mode-grid",
@@ -74,6 +97,7 @@ export const modeGridBlock = defineBlock({
         image: { type: "media", label: "Gambar", accept: ["image/*"] },
         url: { type: "string", label: "Tautan" },
       }),
+      default: DEFAULT_MODE_GRID_ITEMS,
     },
   }),
 });
@@ -93,23 +117,24 @@ export const defaultHomepage = [
   {
     type: "alpha.battle-hero",
     props: {
-      eyebrow: "SEASON 1 SEKARANG AKTIF",
+      eyebrow: DEFAULT_HERO_EYEBROW,
       title: "",
-      subtitle:
-        "Bertahan hidup, bertaktik, dan jadilah yang terakhir berdiri. Bergabunglah dengan jutaan pemain lain di arena kompetitif kami.",
-      ctaLabel: "Mulai Sekarang",
+      subtitle: DEFAULT_HERO_DESCRIPTION,
+      ctaLabel: DEFAULT_HERO_CTA_LABEL,
       ctaUrl: "/news/",
     },
   },
   {
     type: "alpha.stats-strip",
     props: {
-      items: [
-        { value: "500JT+", label: "PEMAIN TERDAFTAR" },
-        { value: "30JT+", label: "PEMAIN AKTIF HARIAN" },
-        { value: "200+", label: "TURNAMEN DIGELAR" },
-        { value: "24/7", label: "SERVER AKTIF" },
-      ],
+      items: DEFAULT_STAT_ITEMS,
+    },
+  },
+  {
+    type: "alpha.mode-grid",
+    props: {
+      title: "Mode Permainan",
+      items: DEFAULT_MODE_GRID_ITEMS,
     },
   },
   {

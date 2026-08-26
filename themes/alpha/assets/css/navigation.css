@@ -1,14 +1,18 @@
 .main-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  height: 100%;
   flex-wrap: wrap;
 }
 .main-nav > a,
 .main-nav .nav-item > a,
 .main-nav .nav-item-label {
-  display: inline-block;
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
   font-family: var(--theme-typography-heading);
   font-weight: 600;
   font-size: 14px;
@@ -24,48 +28,81 @@
 .main-nav .nav-item-label {
   cursor: default;
 }
-.main-nav .nav-item {
-  position: relative;
-}
 .main-nav .has-children > a::after,
 .main-nav .has-children > .nav-item-label::after {
   content: " ▾";
   font-size: 0.7em;
   opacity: 0.7;
 }
-.main-nav .sub-menu {
-  display: none;
+
+/* Mega dropdown — a full-navbar-width panel rather than a small list. Each
+   top-level item's children become their own column (title + grandchildren
+   as that column's links); `.navbar` (navigation.css's sibling, header.css)
+   is the positioned ancestor, not `.nav-item` itself, so `left/right: 0`
+   spans the whole bar no matter which item triggered it. */
+.mega-panel {
   position: absolute;
   top: 100%;
   left: 0;
-  flex-direction: column;
-  gap: 2px;
+  right: 0;
   background: var(--theme-surface);
-  border: 1px solid var(--theme-line);
-  padding: 8px;
-  min-width: 200px;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid var(--theme-line);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
   z-index: 50;
 }
-.main-nav .sub-menu a,
-.main-nav .sub-menu .nav-item-label {
+.nav-item.has-children:hover .mega-panel,
+.nav-item.has-children:focus-within .mega-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.mega-panel__inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 32px;
+  padding: 32px 24px;
+}
+.mega-col__title {
   display: block;
-  padding: 8px 10px;
-  font-size: 13px;
+  font-family: var(--theme-typography-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--theme-line);
 }
-.main-nav .sub-menu .nav-item {
-  width: 100%;
-}
-.main-nav .sub-menu .sub-menu {
-  top: -8px;
-  left: 100%;
-}
-.main-nav .nav-item:hover > .sub-menu,
-.main-nav .nav-item:focus-within > .sub-menu {
+.mega-col__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.main-nav .sub-menu .has-children > a::after,
-.main-nav .sub-menu .has-children > .nav-item-label::after {
-  content: " ▸";
-  font-size: 0.7em;
+.mega-col__list a {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--theme-muted);
+  transition: color 0.15s ease;
+}
+.mega-col__list a:hover {
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+  .mega-panel__inner {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 20px;
+    padding: 20px;
+  }
 }

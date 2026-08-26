@@ -2,7 +2,11 @@ import { BlockRegistryService } from './block-registry.service';
 
 const FACULTY = 'unej.theme-faculty';
 const JOY = 'unej.theme-joy';
-const DEFAULT = 'unej.theme-default';
+// Not a real installed theme id — `resolveTheme` (theme-registry.ts) falls
+// back gracefully to the system default for any id it doesn't recognise, so
+// this still exercises "some arbitrary/unresolved theme" the same way an
+// actually-registered id would.
+const UNKNOWN = 'test.theme-unknown';
 
 describe('BlockRegistryService', () => {
   const registry = new BlockRegistryService();
@@ -11,7 +15,7 @@ describe('BlockRegistryService', () => {
     registry.listForTheme(themeId).map(({ definition }) => String(definition.id));
 
   it('exposes the core catalog to every theme', () => {
-    for (const themeId of [FACULTY, JOY, DEFAULT]) {
+    for (const themeId of [FACULTY, JOY, UNKNOWN]) {
       expect(typesFor(themeId)).toEqual(expect.arrayContaining(['core.hero', 'core.news', 'core.text']));
     }
   });
@@ -38,7 +42,7 @@ describe('BlockRegistryService', () => {
   it('resolves an unsupported block to its declared core fallback', () => {
     // Authored under Faculty, now viewed under Joy: the section must survive.
     expect(registry.resolveFallback(JOY, 'faculty.video-hero')?.id).toBe('core.hero');
-    expect(registry.resolveFallback(DEFAULT, 'joy.announcement')?.id).toBe('core.text');
+    expect(registry.resolveFallback(UNKNOWN, 'joy.announcement')?.id).toBe('core.text');
   });
 
   it('returns the block itself when the theme already supports it', () => {

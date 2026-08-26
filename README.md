@@ -100,7 +100,7 @@ Buka `http://localhost:4310/` (atau port yang dipakai) — daftar route yang ter
 
 ### Menerapkan perubahan tema ke instance dev (native)
 
-`pnpm theme:dev` di atas cuma preview mandiri — tidak dipakai oleh dashboard/API beneran. Kalau Anda mengedit tema (mis. `themes/premium`) dan mau perubahannya muncul di instance native yang sedang berjalan (`pnpm dev` / `pnpm dev:watch`), perlu tiga langkah, karena backend meng-*import* tema sebagai package (`@unej-cms/theme-premium` dari `dist/`, bukan baca `src/` langsung — lihat `apps/backend/src/modules/themes/theme-registry.ts`):
+`pnpm theme:dev` di atas cuma preview mandiri — tidak dipakai oleh dashboard/API beneran. Kalau Anda mengedit tema (mis. `themes/alpha`) dan mau perubahannya muncul di instance native yang sedang berjalan (`pnpm dev` / `pnpm dev:watch`), perlu tiga langkah, karena backend meng-*import* tema sebagai package (`@unej-cms/theme-alpha` dari `dist/`, bukan baca `src/` langsung — lihat `apps/backend/src/modules/themes/theme-registry.ts`):
 
 1. **Rebuild package tema.**
    - Dengan `pnpm dev:watch`: otomatis — setiap workspace di `themes/**` punya script `dev` (`tsup --watch`) yang jalan paralel dan langsung rebuild `dist/index.js` tiap file di `themes/<slug>/src` disimpan.

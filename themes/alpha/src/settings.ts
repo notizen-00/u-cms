@@ -8,6 +8,12 @@ export const DEFAULT_HERO_DESCRIPTION =
   "Bertahan hidup, bertaktik, dan jadilah yang terakhir berdiri. Bergabunglah dengan jutaan pemain lain di arena kompetitif kami.";
 export const DEFAULT_HERO_CTA_LABEL = "Mulai Sekarang";
 export const DEFAULT_META_KEYWORDS = "game, esports, komunitas, turnamen, battle royale";
+export const DEFAULT_STAT_ITEMS = [
+  { value: "500JT+", label: "PEMAIN TERDAFTAR" },
+  { value: "30JT+", label: "PEMAIN AKTIF HARIAN" },
+  { value: "200+", label: "TURNAMEN DIGELAR" },
+  { value: "24/7", label: "SERVER AKTIF" },
+];
 
 /**
  * Configurable per-site options (admin-editable via the Dashboard's theme
@@ -76,12 +82,7 @@ export const settings: PropertySchema = definePropertySchema({
       value: { type: "string", label: "Angka", required: true, placeholder: "500JT+" },
       label: { type: "string", label: "Label", required: true, placeholder: "PEMAIN TERDAFTAR" },
     }),
-    default: [
-      { value: "500JT+", label: "PEMAIN TERDAFTAR" },
-      { value: "30JT+", label: "PEMAIN AKTIF HARIAN" },
-      { value: "200+", label: "TURNAMEN DIGELAR" },
-      { value: "24/7", label: "SERVER AKTIF" },
-    ],
+    default: DEFAULT_STAT_ITEMS,
   },
   showSearch: {
     type: "boolean",

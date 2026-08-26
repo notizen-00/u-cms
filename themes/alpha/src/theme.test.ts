@@ -43,12 +43,50 @@ describe("alphaTheme", () => {
     expect(alphaTheme.blocks?.find((block) => block.id === "alpha.mode-grid")?.fallback).toBe("core.gallery");
   });
 
-  it("starts a new site with a battle hero, stats strip, and news homepage", () => {
+  /**
+   * The Dashboard's block picker seeds a newly-added block's props straight
+   * from each field's schema `default` (apps/dashboard's block-mutations.ts
+   * `defaultPropsFor`) — so a field with no `default` here is a field a user
+   * drops onto their page blank. Media fields are the deliberate exception
+   * (no real file to default to); every other field on this theme's own
+   * blocks should come pre-filled.
+   */
+  it("seeds every non-media block field with a real default, so the block picker never drops one in blank", () => {
+    const nonMediaFieldsOf = (block: NonNullable<typeof alphaTheme.blocks>[number]) =>
+      Object.entries(block.propertySchema).filter(([, field]) => field.type !== "media");
+
+    for (const block of alphaTheme.blocks ?? []) {
+      for (const [key, field] of nonMediaFieldsOf(block)) {
+        expect(field, `${block.id}.${key} should declare a default`).toHaveProperty("default");
+        expect((field as { default?: unknown }).default, `${block.id}.${key}'s default should not be empty`).not.toBe(
+          "",
+        );
+      }
+    }
+  });
+
+  it("starts a new site with a battle hero, stats strip, mode grid, and news homepage", () => {
     expect(alphaTheme.defaultHomepage?.map((block) => block.type)).toEqual([
       "alpha.battle-hero",
       "alpha.stats-strip",
+      "alpha.mode-grid",
       "core.news",
     ]);
+  });
+
+  /**
+   * Applying/re-applying this theme (ThemesService.ensureHomepage) seeds an
+   * untouched homepage from `defaultHomepage` — so every block this theme
+   * declares should actually appear in it. Otherwise switching to Alpha
+   * leaves one of its own sections needing to be added by hand from the
+   * block picker instead of just being there, ready to click and edit.
+   */
+  it("seeds every block this theme declares onto the starter homepage", () => {
+    const declaredTypes = (alphaTheme.blocks ?? []).map((block) => block.id);
+    const seededTypes = (alphaTheme.defaultHomepage ?? []).map((block) => block.type);
+    for (const type of declaredTypes) {
+      expect(seededTypes, `defaultHomepage should include this theme's own "${type}" block`).toContain(type);
+    }
   });
 
   it("has no leftover placeholder markers in the layout source (substitution ran)", () => {
@@ -126,6 +164,45 @@ describe("layout rendering (Svelte SSR)", () => {
     expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
     expect(body).toContain("Beranda");
     expect(body).toContain("<p>halo</p>");
+  });
+
+  it("renders a top-level menu item's children as mega-panel columns, and their children as that column's links", async () => {
+    const { body } = await renderSvelte(findLayout("layout"), {
+      site,
+      theme,
+      menus: {
+        primary: [
+          {
+            label: "Game Info",
+            url: "/game-info/",
+            newTab: false,
+            clickable: false,
+            children: [
+              {
+                label: "Mode",
+                url: "/game-info/mode/",
+                newTab: false,
+                clickable: true,
+                children: [
+                  { label: "Battle Royale", url: "/game-info/mode/battle-royale/", newTab: false, clickable: true, children: [] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      tokensCss: "",
+      title: "Beranda",
+      body: "<p>halo</p>",
+      seo: { description: "d", keywords: "k", canonicalUrl: null, ogImage: null },
+      news: [],
+    });
+
+    expect(body).toContain("mega-panel");
+    expect(body).toContain("mega-col__title");
+    expect(body).toContain(">Mode<");
+    expect(body).toContain(">Battle Royale<");
+    expect(body).toContain('href="/game-info/mode/battle-royale/"');
   });
 
   it("embeds a search modal and its news index when showSearch is on, and omits both when off", async () => {

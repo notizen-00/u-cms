@@ -1,16 +1,40 @@
+/* Two-tier header — a solid-black utility topbar (logo, search, primary CTA)
+   stacked over a translucent navbar (the actual nav, with room for a
+   full-width mega dropdown beneath it). `.navbar` stays `position: relative`
+   so a mega panel's `left/right: 0` spans the whole bar (see navigation.css)
+   regardless of which item triggered it. */
 .site-header {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: color-mix(in srgb, var(--theme-background) 92%, transparent);
+}
+.topbar {
+  background: #000;
+  border-bottom: 1px solid var(--theme-line);
+}
+.topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: 60px;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+.navbar {
+  position: relative;
+  background: color-mix(in srgb, var(--theme-surface) 92%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--theme-line);
 }
-.nav-row {
+.navbar-row {
   display: flex;
-  align-items: center;
-  gap: 28px;
-  height: 76px;
+  justify-content: center;
+  height: 52px;
 }
 .site-logo {
   display: flex;
@@ -37,12 +61,6 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--theme-foreground);
-}
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-left: auto;
 }
 .search-btn {
   display: grid;

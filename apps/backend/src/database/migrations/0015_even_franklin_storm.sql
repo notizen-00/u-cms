@@ -1,0 +1,1 @@
+ALTER TABLE "sites" ALTER COLUMN "theme_id" SET DEFAULT 'unej.theme-alpha';

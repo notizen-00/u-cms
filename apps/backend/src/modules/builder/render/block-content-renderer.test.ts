@@ -3,13 +3,20 @@ import type { CmsTheme } from '@unej-cms/sdk-theme';
 import type { PageBlock } from '@unej-cms/sdk-content';
 import facultyTheme from '@unej-cms/theme-faculty';
 import joyTheme from '@unej-cms/theme-joy';
-import universityTheme from '@unej-cms/theme-university';
 import { BlockRegistryService } from '../../blocks/block-registry.service';
 import { renderBlocks, type BlockRenderContext } from './block-content-renderer';
 
 const FACULTY = 'unej.theme-faculty';
 const JOY = 'unej.theme-joy';
-const UNIVERSITY = 'unej.theme-university';
+/**
+ * Not a real installed theme — a plain `{ blockRenderers: {} }` stand-in for
+ * "a theme that draws nothing itself for this block," which no currently
+ * installed theme's own props naturally exhibit (alpha/faculty/joy all
+ * declare real renderers). This is arguably a more precise fixture for that
+ * scenario than depending on some real theme happening to have none.
+ */
+const BLANK_THEME = { blockRenderers: {} };
+const BLANK = 'test.theme-blank';
 
 const context: BlockRenderContext = {
   site: { name: 'Situs Uji', slug: 'uji' },
@@ -253,15 +260,15 @@ describe('renderBlocks (generic core fallback)', () => {
   });
 
   it('falls back through a foreign theme block to the generic core renderer when the active theme draws nothing at all', async () => {
-    // University declares no `blockRenderers` whatsoever — not even for
+    // BLANK_THEME declares no `blockRenderers` whatsoever — not even for
     // core.hero — so a page authored under Faculty (`faculty.video-hero`,
-    // fallback: core.hero) switched to University has no theme component to
-    // reach for at any point in the chain. The generic fallback is what
-    // keeps the section visible.
+    // fallback: core.hero) switched to a theme like this has no theme
+    // component to reach for at any point in the chain. The generic fallback
+    // is what keeps the section visible.
     const html = await run(
       [{ id: 'h1', type: 'faculty.video-hero', props: { title: 'Tetap Tampil' } }],
-      universityTheme,
-      UNIVERSITY,
+      BLANK_THEME,
+      BLANK,
     );
 
     expect(html).toContain('Tetap Tampil');

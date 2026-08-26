@@ -17,3 +17,71 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
+
+/* News detail header — a full-bleed banner (featured image if there is one,
+   theme surface if not) ahead of the body copy, echoing hero.css's own
+   media/overlay structure at a shorter, page-header scale. */
+.article-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+  display: flex;
+  align-items: flex-end;
+  padding: 64px 0 40px;
+  margin-bottom: var(--theme-spacing-section);
+  background: radial-gradient(120% 100% at 20% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent),
+    var(--theme-surface);
+  border-bottom: 1px solid var(--theme-line);
+}
+.article-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.article-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.article-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, var(--theme-background) 6%, rgba(10, 10, 12, 0.55) 55%, rgba(10, 10, 12, 0.2) 100%);
+}
+.article-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--theme-layout-narrow);
+}
+.article-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  color: var(--primary);
+  font-family: var(--theme-typography-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  margin-bottom: 18px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.article-hero-inner h1 {
+  font-size: clamp(28px, 4.4vw, 44px);
+  line-height: 1.12;
+  margin-bottom: 16px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+.article-hero-inner .meta-row {
+  color: color-mix(in srgb, var(--theme-foreground) 75%, transparent);
+}
+
+@media (max-width: 720px) {
+  .article-hero {
+    min-height: 240px;
+    padding: 48px 0 32px;
+  }
+}

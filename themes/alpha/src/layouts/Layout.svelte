@@ -50,13 +50,32 @@
 			<span class="nav-item-label">{item.label}</span>
 		{/if}
 		{#if item.children.length > 0}
-			<span class="sub-menu">
-				{#each item.children as child (child.label + child.url)}
-					{@render navItem(child)}
-				{/each}
-			</span>
+			<div class="mega-panel">
+				<div class="mega-panel__inner wrap">
+					{#each item.children as column (column.label + column.url)}
+						{@render megaColumn(column)}
+					{/each}
+				</div>
+			</div>
 		{/if}
 	</span>
+{/snippet}
+
+{#snippet megaColumn(column)}
+	<div class="mega-col">
+		{#if column.clickable}
+			<a class="mega-col__title" href={column.url} target={column.newTab ? '_blank' : undefined} rel={column.newTab ? 'noopener noreferrer' : undefined}>{column.label}</a>
+		{:else}
+			<span class="mega-col__title">{column.label}</span>
+		{/if}
+		{#if column.children.length > 0}
+			<ul class="mega-col__list">
+				{#each column.children as leaf (leaf.label + leaf.url)}
+					<li><a href={leaf.url} target={leaf.newTab ? '_blank' : undefined} rel={leaf.newTab ? 'noopener noreferrer' : undefined}>{leaf.label}</a></li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
 {/snippet}
 
 <svelte:head>
@@ -83,40 +102,46 @@
 </svelte:head>
 
 <header class="site-header" class:is-home={isHome} class:not-home={!isHome}>
-	<div class="wrap nav-row">
-		<a href="/" class="site-logo">
-			<span class="site-logo__mark">A</span>
-			<span class="site-logo__name">{site.name}</span>
-		</a>
-		<nav class="main-nav">
-			{#if menus.primary && menus.primary.length > 0}
-				{#each menus.primary as item (item.label + item.url)}
-					{@render navItem(item)}
-				{/each}
-			{:else}
-				<a href="/">Beranda</a>
-				<a href="/news/">Berita</a>
-			{/if}
-		</nav>
-		<div class="nav-actions">
-			{#if theme.showSearch}
-				<button
-					type="button"
-					class="search-btn"
-					data-search-open
-					aria-label="Cari berita"
-					aria-haspopup="dialog"
-					aria-expanded="false"
-				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<circle cx="11" cy="11" r="7" />
-						<line x1="21" y1="21" x2="16.65" y2="16.65" />
-					</svg>
-				</button>
-			{/if}
-			<a class="btn btn-primary btn-cut nav-cta" href="/news/">Gabung</a>
+	<div class="topbar">
+		<div class="wrap topbar-row">
+			<a href="/" class="site-logo">
+				<span class="site-logo__mark">A</span>
+				<span class="site-logo__name">{site.name}</span>
+			</a>
+			<div class="topbar-actions">
+				{#if theme.showSearch}
+					<button
+						type="button"
+						class="search-btn"
+						data-search-open
+						aria-label="Cari berita"
+						aria-haspopup="dialog"
+						aria-expanded="false"
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="11" cy="11" r="7" />
+							<line x1="21" y1="21" x2="16.65" y2="16.65" />
+						</svg>
+					</button>
+				{/if}
+				<a class="btn btn-primary btn-cut nav-cta" href="/news/">Gabung</a>
+			</div>
 		</div>
 	</div>
+	<nav class="navbar">
+		<div class="wrap navbar-row">
+			<div class="main-nav">
+				{#if menus.primary && menus.primary.length > 0}
+					{#each menus.primary as item (item.label + item.url)}
+						{@render navItem(item)}
+					{/each}
+				{:else}
+					<a href="/">Beranda</a>
+					<a href="/news/">Berita</a>
+				{/if}
+			</div>
+		</div>
+	</nav>
 </header>
 
 {#if theme.showSearch}

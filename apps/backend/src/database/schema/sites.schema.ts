@@ -21,7 +21,7 @@ export const sites = pgTable('sites', {
   // ship as code (workspace packages), not database rows.
   themeId: varchar('theme_id', { length: 200 })
     .notNull()
-    .default('unej.theme-default'),
+    .default('unej.theme-alpha'),
   settings: jsonb('settings').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
