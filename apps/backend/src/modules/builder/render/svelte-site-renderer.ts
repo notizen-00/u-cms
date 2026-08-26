@@ -115,7 +115,7 @@ export class SvelteSiteRenderer implements SiteRenderer {
       // a theme's Layout component style itself differently on the homepage
       // (e.g. a transparent header overlaid on a full-screen hero video) —
       // every other page renders with the normal, opaque header.
-      const { head, body } = await renderLayout('layout', { title, body: bodyHtml, seo, isHome });
+      const { head, body } = await renderLayout('layout', { title, body: bodyHtml, seo, isHome, news: data.news });
       const pluginAssetTags = renderPluginAssetTags(emittedPluginAssets, relativePath);
       // Plugin CSS (e.g. Page Builder's generic block styles) loads BEFORE
       // the theme's own <style> block, not after — so a theme's same-

@@ -69,6 +69,7 @@ async function resolveInfrastructure(backendWasCreated) {
 		mode: flags.infra,
 		yes: flags.yes,
 		backendEnvWasCreated: backendWasCreated,
+		explicitMode: infraArg !== undefined,
 		reconcileCredentials: true
 	});
 	if (result.mode === 'docker') {

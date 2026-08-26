@@ -13,6 +13,9 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
+body.search-modal-open {
+  overflow: hidden;
+}
 a {
   color: inherit;
   text-decoration: none;

@@ -55,9 +55,11 @@ describe("alphaTheme", () => {
     const layout = alphaTheme.layouts.find((candidate) => candidate.id === "layout");
     expect(layout?.render).not.toContain("__SCROLL_REVEAL_SCRIPT__");
     expect(layout?.render).not.toContain("__HERO_VIDEO_SCRIPT__");
+    expect(layout?.render).not.toContain("__SEARCH_MODAL_SCRIPT__");
     expect(layout?.render).not.toContain("__THEME_STYLES__");
     expect(layout?.render).toContain("IntersectionObserver");
     expect(layout?.render).toContain("btn-cut");
+    expect(layout?.render).toContain("__NEWS_SEARCH_INDEX__");
   });
 });
 
@@ -114,6 +116,9 @@ describe("layout rendering (Svelte SSR)", () => {
       title: "Beranda",
       body: "<p>halo</p>",
       seo: { description: "Deskripsi uji.", keywords: "uji, tes", canonicalUrl: "https://example.test/", ogImage: null },
+      news: [
+        { slug: "a", title: "Berita A", excerpt: "Ringkasan A", categories: [], featuredImageUrl: null, publishedAt: "2026-01-01" },
+      ],
     });
 
     expect(head).toContain("<title>Beranda | Situs Uji</title>");
@@ -121,6 +126,37 @@ describe("layout rendering (Svelte SSR)", () => {
     expect(head).toContain('<meta name="keywords" content="uji, tes"/>');
     expect(body).toContain("Beranda");
     expect(body).toContain("<p>halo</p>");
+  });
+
+  it("embeds a search modal and its news index when showSearch is on, and omits both when off", async () => {
+    const newsItem = {
+      slug: "berita-a",
+      title: "Berita A",
+      excerpt: "Ringkasan A",
+      categories: [{ name: "Kampus", slug: "kampus" }],
+      featuredImageUrl: null,
+      publishedAt: "2026-01-01",
+    };
+    const baseProps = {
+      site,
+      menus: {},
+      tokensCss: ":root{--theme-background:#0a0a0c;}",
+      title: "Beranda",
+      body: "<p>halo</p>",
+      seo: { description: "d", keywords: "k", canonicalUrl: null, ogImage: null },
+      news: [newsItem],
+    };
+
+    const on = await renderSvelte(findLayout("layout"), { ...baseProps, theme: { ...theme, showSearch: true } });
+    expect(on.body).toContain("data-search-modal");
+    expect(on.body).toContain("data-search-open");
+    expect(on.body).toContain("__NEWS_SEARCH_INDEX__");
+    expect(on.body).toContain("Berita A");
+
+    const off = await renderSvelte(findLayout("layout"), { ...baseProps, theme: { ...theme, showSearch: false } });
+    expect(off.body).not.toContain("data-search-modal");
+    expect(off.body).not.toContain("data-search-open");
+    expect(off.body).not.toContain("__NEWS_SEARCH_INDEX__");
   });
 
   it("renders the home layout with hero, stats, news, and info cards", async () => {

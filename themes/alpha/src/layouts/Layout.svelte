@@ -1,9 +1,45 @@
 <script>
-	let { site, theme, menus, tokensCss, title, body, isHome, seo } = $props();
+	let { site, theme, menus, tokensCss, title, body, isHome, seo, news = [] } = $props();
 
 	const scrollRevealScript = __SCROLL_REVEAL_SCRIPT__;
 	const heroVideoScript = __HERO_VIDEO_SCRIPT__;
+	const searchModalScript = __SEARCH_MODAL_SCRIPT__;
 	const themeStyles = __THEME_STYLES__;
+
+	function formatDate(value) {
+		if (!value) return '';
+		const date = value instanceof Date ? value : new Date(value);
+		if (Number.isNaN(date.getTime())) return '';
+		return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+	}
+
+	/**
+	 * The whole news list, newest first, trimmed to the fields the search
+	 * modal actually renders — embedded below as `window.__NEWS_SEARCH_INDEX__`
+	 * for animations.ts's SEARCH_MODAL_SCRIPT to filter client-side (no
+	 * backend to query at runtime, see that script's doc comment).
+	 */
+	const searchIndex = [...news]
+		.sort((a, b) => {
+			const at = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+			const bt = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+			return bt - at;
+		})
+		.map((item) => ({
+			t: item.title,
+			s: item.slug,
+			e: item.excerpt || '',
+			c: item.categories.map((category) => category.name).join(', '),
+			d: formatDate(item.publishedAt),
+			i: item.featuredImageUrl || '',
+		}));
+
+	// Every "<" is escaped so a title/excerpt that happens to contain a
+	// closing script tag, or an HTML comment, can't break out of the inline
+	// script it's embedded in below.
+	function safeJsonScript(value) {
+		return JSON.stringify(value).split('<').join('\\u003c');
+	}
 </script>
 
 {#snippet navItem(item)}
@@ -64,17 +100,49 @@
 		</nav>
 		<div class="nav-actions">
 			{#if theme.showSearch}
-				<a class="search-btn" href="/news/" aria-label="Cari">
+				<button
+					type="button"
+					class="search-btn"
+					data-search-open
+					aria-label="Cari berita"
+					aria-haspopup="dialog"
+					aria-expanded="false"
+				>
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<circle cx="11" cy="11" r="7" />
 						<line x1="21" y1="21" x2="16.65" y2="16.65" />
 					</svg>
-				</a>
+				</button>
 			{/if}
 			<a class="btn btn-primary btn-cut nav-cta" href="/news/">Gabung</a>
 		</div>
 	</div>
 </header>
+
+{#if theme.showSearch}
+	<div class="search-modal" data-search-modal aria-hidden="true">
+		<div class="search-modal__overlay" data-search-close></div>
+		<div class="search-modal__panel" role="dialog" aria-modal="true" aria-label="Pencarian berita">
+			<div class="search-modal__head">
+				<svg class="search-modal__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="7" />
+					<line x1="21" y1="21" x2="16.65" y2="16.65" />
+				</svg>
+				<input
+					type="text"
+					class="search-modal__input"
+					data-search-input
+					placeholder="Cari berita..."
+					autocomplete="off"
+					aria-label="Kata kunci pencarian"
+				/>
+				<button type="button" class="search-modal__close" data-search-close aria-label="Tutup pencarian">✕</button>
+			</div>
+			<div class="search-modal__body" data-search-results></div>
+		</div>
+	</div>
+	{@html `<script>window.__NEWS_SEARCH_INDEX__ = ${safeJsonScript(searchIndex)};</script>`}
+{/if}
 
 <main>
 	{@html body}
@@ -133,3 +201,6 @@
 
 {@html `<script>${scrollRevealScript}</script>`}
 {@html `<script>${heroVideoScript}</script>`}
+{#if theme.showSearch}
+	{@html `<script>${searchModalScript}</script>`}
+{/if}

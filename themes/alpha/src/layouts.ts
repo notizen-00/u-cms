@@ -1,5 +1,5 @@
 import { defineLayout } from "@unej-cms/sdk-theme";
-import { SCROLL_REVEAL_SCRIPT, HERO_VIDEO_SCRIPT } from "./animations.js";
+import { SCROLL_REVEAL_SCRIPT, HERO_VIDEO_SCRIPT, SEARCH_MODAL_SCRIPT } from "./animations.js";
 import { ThemeStylesSource } from "./theme-styles.generated.js";
 import {
   LayoutSource,
@@ -26,12 +26,28 @@ import {
  * assets/css/*.css (separate files per concern, never one giant inline
  * stylesheet), concatenated by scripts/generate-theme-styles.mjs into
  * `ThemeStylesSource`, spliced in here.
+ *
+ * `stringifyForScript` additionally escapes a closing-tag sequence that
+ * `JSON.stringify` alone leaves untouched: SEARCH_MODAL_SCRIPT builds HTML
+ * via strings like `'</span>'`/`'</a>'`, and once spliced into
+ * Layout.svelte's own `<script>` block, Svelte's *template* scanner (which
+ * runs before any JS parsing, and doesn't check the tag name) reads that
+ * substring as this block's closing tag and truncates the component right
+ * there. Splitting the two characters apart in the emitted source (the
+ * runtime string value is unaffected, matching `<script>` self-escaping)
+ * avoids it, the same way a literal script tag has to be escaped when
+ * embedded inside another one.
  */
+function stringifyForScript(value: string): string {
+  return JSON.stringify(value).split("</").join("<\\/");
+}
+
 function resolvePlaceholders(source: string): string {
   return source
-    .replace("__SCROLL_REVEAL_SCRIPT__", () => JSON.stringify(SCROLL_REVEAL_SCRIPT))
-    .replace("__HERO_VIDEO_SCRIPT__", () => JSON.stringify(HERO_VIDEO_SCRIPT))
-    .replace("__THEME_STYLES__", () => JSON.stringify(ThemeStylesSource));
+    .replace("__SCROLL_REVEAL_SCRIPT__", () => stringifyForScript(SCROLL_REVEAL_SCRIPT))
+    .replace("__HERO_VIDEO_SCRIPT__", () => stringifyForScript(HERO_VIDEO_SCRIPT))
+    .replace("__SEARCH_MODAL_SCRIPT__", () => stringifyForScript(SEARCH_MODAL_SCRIPT))
+    .replace("__THEME_STYLES__", () => stringifyForScript(ThemeStylesSource));
 }
 
 export const layoutLayout = defineLayout<string>({
