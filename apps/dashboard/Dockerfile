@@ -7,63 +7,51 @@ RUN corepack enable \
 
 
 # =========================================================
-# Dependencies
+# BUILD
 # =========================================================
-FROM base AS deps
+FROM base AS build
 
+# Root workspace metadata
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Dashboard package
 COPY apps/dashboard/package.json ./apps/dashboard/package.json
 
+# Install workspace dependencies
 RUN pnpm install --frozen-lockfile
 
-
-# =========================================================
-# Build
-# =========================================================
-FROM deps AS build
-
+# Copy source code
 COPY . .
 
+# Build dashboard
 RUN pnpm --filter ./apps/dashboard build
 
-# Pastikan hasil SvelteKit benar-benar ada
+# Verify SvelteKit output
 RUN test -f /app/apps/dashboard/build/index.js
 
 
 # =========================================================
-# Production dependencies
+# RUNTIME
 # =========================================================
-FROM deps AS prod-deps
+FROM base AS runtime
 
-# Buang devDependencies setelah semua dependency workspace
-# berhasil di-install.
-RUN pnpm prune --prod
+# Copy workspace metadata
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
+# Copy dashboard package.json
+COPY apps/dashboard/package.json ./apps/dashboard/package.json
 
-# =========================================================
-# Runtime
-# =========================================================
-FROM node:22-alpine AS runtime
+# Install production dependencies
+RUN pnpm install \
+    --frozen-lockfile \
+    --prod \
+    --filter ./apps/dashboard...
 
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-RUN corepack enable \
-    && corepack prepare pnpm@10.12.4 --activate
-
-# Ambil node_modules hasil install production
-COPY --from=prod-deps /app/node_modules ./node_modules
-
-# Package dashboard
-COPY --from=prod-deps /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
-
-COPY apps/dashboard/package.json ./package.json
-
-# Hasil build
+# Copy build output
 COPY --from=build /app/apps/dashboard/build ./build
 
-# Verifikasi dependency penting tersedia
+# IMPORTANT:
+# clsx must be available from the runtime root
 RUN node -e "import('clsx').then(() => console.log('clsx OK')).catch(err => { console.error(err); process.exit(1) })"
 
 RUN chown -R node:node /app
