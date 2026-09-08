@@ -2,7 +2,8 @@ FROM node:22-alpine AS base
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+RUN corepack enable \
+    && corepack prepare pnpm@10.12.4 --activate
 
 
 # =========================
@@ -11,8 +12,7 @@ RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/dashboard/package.json ./apps/dashboard/package.json
 
 RUN pnpm install --frozen-lockfile
 
@@ -26,9 +26,6 @@ COPY . .
 
 RUN pnpm --filter ./apps/dashboard build
 
-RUN echo "=== HASIL BUILD ===" && \
-    find /app/apps/dashboard -maxdepth 3 -type d -print
-
 
 # =========================
 # Runtime
@@ -39,13 +36,19 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+RUN corepack enable \
+    && corepack prepare pnpm@10.12.4 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/dashboard/package.json ./apps/dashboard/package.json
 
-RUN pnpm install --frozen-lockfile --prod --filter ./apps/dashboard...
+RUN pnpm install \
+    --frozen-lockfile \
+    --prod \
+    --filter ./apps/dashboard...
 
+# Hasil build dashboard:
+# /app/apps/dashboard/build
 COPY --from=build /app/apps/dashboard/build ./build
 
 RUN chown -R node:node /app
