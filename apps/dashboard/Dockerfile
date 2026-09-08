@@ -4,30 +4,48 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
+
+# =========================
+# Dependencies
+# =========================
 FROM base AS deps
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+COPY apps/dashboard/package.json apps/dashboard/package.json
 
 RUN pnpm install --frozen-lockfile
 
+
+# =========================
+# Build
+# =========================
 FROM deps AS build
 
 COPY . .
 
-RUN pnpm build
+RUN pnpm --filter ./apps/dashboard build
 
-# pastikan output memang ada
-RUN test -d /app/build
+RUN test -d /app/apps/dashboard/build
 
-FROM base AS runtime
+
+# =========================
+# Runtime
+# =========================
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
-RUN pnpm install --frozen-lockfile --prod
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/dashboard/package.json apps/dashboard/package.json
 
-COPY --from=build /app/build ./build
+RUN pnpm install --frozen-lockfile --prod --filter ./apps/dashboard...
+
+COPY --from=build /app/apps/dashboard/build ./build
 
 RUN chown -R node:node /app
 
