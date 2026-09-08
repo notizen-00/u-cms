@@ -18,10 +18,10 @@ Selesai. Perintah itu membangun image, menjalankan Postgres + Redis + MinIO, men
 
 | Layanan | URL |
 | --- | --- |
-| Dashboard admin | http://localhost:8081 |
-| Website publik (hasil build) | http://localhost:8080 |
-| API | http://localhost:3000 |
-| MinIO console | http://localhost:9001 |
+| Dashboard admin | http://localhost:8080/admin |
+| Website publik (hasil build) | http://localhost:8080/ |
+| API | http://localhost:8080/api |
+| Media (MinIO public) | http://localhost:8080/media |
 
 Semua port dan kredensial punya default yang berfungsi. Untuk mengubahnya, salin [`.env.example`](.env.example) ke `.env` — Compose membacanya otomatis.
 
@@ -58,7 +58,7 @@ pnpm dev:watch  # mode pengembangan dengan hot reload
 pnpm start      # mode produksi: tiga proses yang sama, dari hasil build
 ```
 
-Dashboard ada di http://localhost:5173. Gunakan `pnpm dev:watch` saat mengembangkan UI agar perubahan dimuat otomatis oleh Vite.
+Dashboard ada di http://localhost:5173/admin. Gunakan `pnpm dev:watch` saat mengembangkan UI agar perubahan dimuat otomatis oleh Vite.
 Hasil publish builder tersedia secara native di `http://{site-slug}.localhost:8080/` selama `pnpm dev:watch` berjalan.
 
 Flag yang tersedia kalau Anda perlu kendali lebih:

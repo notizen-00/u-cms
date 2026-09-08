@@ -124,7 +124,7 @@
 						</svg>
 					</button>
 				{/if}
-				<a class="btn btn-primary btn-cut nav-cta" href="/news/">Gabung</a>
+				<a class="btn btn-primary btn-cut nav-cta" href="/news/">Berita</a>
 			</div>
 		</div>
 	</div>

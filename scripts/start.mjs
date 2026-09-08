@@ -206,7 +206,7 @@ async function main() {
 
 	console.log(
 		`\n${paint('1', 'UNEJ CMS ready')}\n\n` +
-			`${paint('32', '✓')} Dashboard       http://localhost:${dashboardPort}\n` +
+			`${paint('32', '✓')} Dashboard       http://localhost:${dashboardPort}/admin\n` +
 			`${paint('32', '✓')} API             http://localhost:${apiPort}\n` +
 			`${paint('32', '✓')} Builder worker  running\n\n` +
 			`${paint('2', 'No file watchers. Press Ctrl+C to stop the application.')}\n`

@@ -109,8 +109,6 @@ services:
       REDIS_URL: redis://redis:6379
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-unej_cms_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
-      # Optional shared secret for POST /setup/init (header X-Setup-Token).
-      # Set it in .env when the instance is reachable before setup completes.
       SETUP_TOKEN: ${SETUP_TOKEN:-}
       BUILD_OUTPUT_DIR: /sites
       MINIO_ENDPOINT: minio
@@ -118,15 +116,8 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
       MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
-      # Both of these are baked into HTML that a *visitor's* browser loads, so
-      # they must be reachable from outside the compose network. Left unset,
-      # AppConfigService falls back to the in-network `http://minio:9000`,
-      # which resolves nowhere in a browser and renders every uploaded image
-      # on a published site as broken.
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
-      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:3000}
-    ports:
-      - '${API_PORT:-3000}:3000'
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8080/media}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8080/api}
     volumes:
       - site_output:/sites
     healthcheck:
@@ -163,7 +154,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
       MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8080/media}
     volumes:
       - site_output:/sites
 
@@ -177,23 +168,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Adapter-node reads form actions before forwarding them to the API.
-      # Covers Page Builder content and the existing 10 MB media upload.
       BODY_SIZE_LIMIT: 16M
-      # SvelteKit adapter-node same-origin check for form actions; must match
-      # the public URL the admin app is reached at (nginx admin.conf below).
-      ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8081}
-      # Service name on the compose network, not the host-facing api port.
+      ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8080}
       PUBLIC_API_URL: http://api:3000
-      # Host:port nginx's public static-site server listens on (host-facing,
-      # since "Visit Site" links are opened by the admin's own browser).
       PUBLIC_SITE_HOST: ${PUBLIC_SITE_HOST:-localhost:8080}
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/admin/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 12
@@ -206,20 +190,10 @@ services:
       dashboard:
         condition: service_healthy
     ports:
-      # Public static sites (built by `builder`, served from site_output).
       - '${PUBLIC_SITE_PORT:-8080}:80'
-      # Admin dashboard, reverse-proxied separately from public sites per
-      # docs/PRD-ADMIN.md §"Deployment".
-      - '${ADMIN_PORT:-8081}:81'
     volumes:
       - site_output:/sites:ro
-      # Overwrites the image's own conf.d/default.conf (server_name localhost,
-      # docroot /usr/share/nginx/html) — that stock file otherwise wins over
-      # public.conf for any request with a "localhost" Host header, since
-      # nginx prefers an exact server_name match over public.conf's `_`
-      # catch-all regardless of file load order, silently 404-ing everything.
-      - ./deploy/nginx/public.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./deploy/nginx/admin.conf:/etc/nginx/conf.d/admin.conf:ro
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   postgres_data:
