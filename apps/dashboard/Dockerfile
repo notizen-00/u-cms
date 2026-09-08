@@ -16,6 +16,9 @@ COPY . .
 
 RUN pnpm build
 
+# pastikan output memang ada
+RUN test -d /app/build
+
 FROM base AS runtime
 
 ENV NODE_ENV=production
