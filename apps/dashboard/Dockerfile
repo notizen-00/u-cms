@@ -26,7 +26,8 @@ COPY . .
 
 RUN pnpm --filter ./apps/dashboard build
 
-RUN test -d /app/apps/dashboard/build
+RUN echo "=== HASIL BUILD ===" && \
+    find /app/apps/dashboard -maxdepth 3 -type d -print
 
 
 # =========================
