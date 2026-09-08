@@ -6,6 +6,9 @@ RUN corepack enable \
     && corepack prepare pnpm@10.12.4 --activate
 
 
+# =========================
+# Dependencies
+# =========================
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -14,14 +17,20 @@ COPY apps/dashboard/package.json ./apps/dashboard/package.json
 RUN pnpm install --frozen-lockfile
 
 
+# =========================
+# Build
+# =========================
 FROM deps AS build
 
 COPY . .
 
+# Build dashboard DI DALAM DOCKER
 RUN pnpm --filter ./apps/dashboard build
 
 
-
+# =========================
+# Runtime
+# =========================
 FROM node:22-alpine AS runtime
 
 WORKDIR /app
@@ -39,6 +48,7 @@ RUN pnpm install \
     --prod \
     --filter ./apps/dashboard...
 
+# Ambil hasil build dari build stage
 COPY --from=build /app/apps/dashboard/build ./build
 
 RUN chown -R node:node /app
