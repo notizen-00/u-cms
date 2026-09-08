@@ -20,7 +20,6 @@ COPY . .
 
 RUN pnpm --filter ./apps/dashboard build
 
-RUN test -f /app/apps/dashboard/build/index.js
 
 
 FROM node:22-alpine AS runtime
