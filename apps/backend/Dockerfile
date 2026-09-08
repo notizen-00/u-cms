@@ -30,6 +30,10 @@ COPY --from=build /app/plugins /app/plugins
 COPY --from=build /app/themes /app/themes
 COPY --from=build /app/apps/backend/dist /app/apps/backend/dist
 
+RUN chown -R node:node /app
+
+USER node
+
 WORKDIR /app/apps/backend
 
 EXPOSE 3000
