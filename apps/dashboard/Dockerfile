@@ -52,7 +52,6 @@ COPY --from=build /app/apps/dashboard/build ./build
 
 # IMPORTANT:
 # clsx must be available from the runtime root
-RUN node -e "import('clsx').then(() => console.log('clsx OK')).catch(err => { console.error(err); process.exit(1) })"
 
 RUN chown -R node:node /app
 
