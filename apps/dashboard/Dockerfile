@@ -48,15 +48,13 @@ RUN pnpm install \
     --filter ./apps/dashboard...
 
 # Copy build output
-COPY --from=build /app/apps/dashboard/build ./build
+COPY --from=build /app/apps/dashboard/build ./apps/dashboard/build
 
-# IMPORTANT:
-# clsx must be available from the runtime root
-
+# Pastikan permission benar
 RUN chown -R node:node /app
 
 USER node
 
 EXPOSE 3000
 
-CMD ["node", "build"]
+CMD ["node", "apps/dashboard/build"]
