@@ -162,6 +162,7 @@ services:
       BODY_SIZE_LIMIT: 32M
       ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8080}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-/api}
+      API_INTERNAL_URL: http://api:3000
     healthcheck:
       test:
         - CMD
