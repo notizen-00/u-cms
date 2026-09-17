@@ -97,6 +97,10 @@ export class MediaStorageService implements OnModuleInit {
   }
 
   getPublicUrl(key: string): string {
-    return `${this.config.minioPublicUrl}/${this.config.minioBucket}/${key}`;
+    // Keep media origin-relative. Persisting MINIO_PUBLIC_URL made rows point
+    // to whatever localhost port happened to be used during upload, which
+    // breaks as soon as the same site is opened through its real domain.
+    // Nginx owns /media and proxies it to this bucket.
+    return `/media/${this.config.minioBucket}/${key}`;
   }
 }

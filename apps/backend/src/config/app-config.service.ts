@@ -66,17 +66,6 @@ export class AppConfigService {
     return this.configService.get('MINIO_USE_SSL', { infer: true });
   }
 
-  get minioPublicUrl(): string {
-    const configured = this.configService.get('MINIO_PUBLIC_URL', {
-      infer: true,
-    });
-    if (configured) {
-      return configured;
-    }
-    const protocol = this.minioUseSSL ? 'https' : 'http';
-    return `${protocol}://${this.minioEndpoint}:${this.minioPort}`;
-  }
-
   get apiPublicUrl(): string {
     const configured = this.configService.get('API_PUBLIC_URL', {
       infer: true,

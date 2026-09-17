@@ -24,11 +24,6 @@ export const envSchema = z.object({
   MINIO_SECRET_KEY: z.string().default('unej_cms_secret'),
   MINIO_BUCKET: z.string().default('unej-cms-media'),
   MINIO_USE_SSL: z.coerce.boolean().default(false),
-  // Browser-facing base URL for building public media links. Falls back to
-  // http(s)://{MINIO_ENDPOINT}:{MINIO_PORT} when unset, which only works if
-  // that host is reachable from outside Docker (e.g. local dev).
-  MINIO_PUBLIC_URL: z.string().url().optional(),
-
   BUILD_OUTPUT_DIR: z.string().default('./data/sites'),
 
   // Browser-facing base URL for this API — embedded as the `action` on
