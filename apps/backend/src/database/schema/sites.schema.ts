@@ -15,6 +15,8 @@ export const sites = pgTable('sites', {
   name: varchar('name', { length: 255 }).notNull(),
   logoUrl: text('logo_url'),
   faviconUrl: text('favicon_url'),
+  // Kept in the database as the authoritative active-site marker. A partial
+  // unique index (migration 0016) guarantees there can be only one true row.
   isActive: boolean('is_active').notNull().default(true),
   // References a CmsTheme manifest id from apps/backend's theme registry
   // (see modules/themes/theme-registry.ts) — not a foreign key, since themes

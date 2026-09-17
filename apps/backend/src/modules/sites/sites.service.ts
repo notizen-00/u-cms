@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -22,13 +23,17 @@ export class SitesService {
   ) {}
 
   async create(dto: CreateSiteDto) {
+    const [existing] = await this.db.select({ id: sites.id }).from(sites).limit(1);
+    if (existing) {
+      throw new ConflictException('This CMS supports one active site only');
+    }
     const [site] = await this.db.insert(sites).values(dto).returning();
     return site;
   }
 
   async findAllForUser(user: AuthenticatedUser) {
     if (user.isSuperAdmin) {
-      return this.db.select().from(sites);
+      return this.db.select().from(sites).where(eq(sites.isActive, true));
     }
 
     const assignments = await this.db
@@ -41,7 +46,10 @@ export class SitesService {
     if (siteIds.length === 0) {
       return [];
     }
-    return this.db.select().from(sites).where(inArray(sites.id, siteIds));
+    return this.db
+      .select()
+      .from(sites)
+      .where(and(inArray(sites.id, siteIds), eq(sites.isActive, true)));
   }
 
   async findOneForUser(id: string, user: AuthenticatedUser) {
@@ -68,7 +76,7 @@ export class SitesService {
     const [updated] = await this.db
       .update(sites)
       .set({ ...dto, updatedAt: new Date() })
-      .where(eq(sites.id, id))
+      .where(and(eq(sites.id, id), eq(sites.isActive, true)))
       .returning();
 
     // name/logoUrl/faviconUrl are rendered straight into every page's
@@ -81,8 +89,7 @@ export class SitesService {
 
   async remove(id: string) {
     await this.getOrThrow(id);
-    await this.db.delete(sites).where(eq(sites.id, id));
-    return { success: true };
+    throw new ForbiddenException('The active site cannot be deleted');
   }
 
   async addMember(siteId: string, dto: AssignMemberDto) {

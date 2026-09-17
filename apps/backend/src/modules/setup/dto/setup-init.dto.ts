@@ -7,13 +7,14 @@ export const setupInitSchema = z.object({
     name: z.string().min(1).max(255),
   }),
   site: z.object({
-    slug: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with dashes'),
     name: z.string().min(1).max(255),
-    domain: z.string().max(255).optional(),
+    // The public address is a hostname, never a URL or a path.
+    domain: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(253)
+      .regex(/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, 'domain must be a valid hostname'),
   }),
 });
 

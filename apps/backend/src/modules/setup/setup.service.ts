@@ -12,6 +12,7 @@ import type { DrizzleDb } from '../../database/database.types';
 import { ensureFixedRoles } from '../../database/roles.seed';
 import { roles, sites, userSiteRoles, users } from '../../database/schema';
 import { AuthService, type RequestMeta } from '../auth/auth.service';
+import { BuildProducer } from '../builder/queue/build.producer';
 import type { SetupInitDto } from './dto/setup-init.dto';
 
 @Injectable()
@@ -20,14 +21,13 @@ export class SetupService {
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly config: AppConfigService,
     private readonly authService: AuthService,
+    private readonly buildProducer: BuildProducer,
   ) {}
 
   async getStatus(): Promise<{ needsSetup: boolean }> {
-    const [existing] = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .limit(1);
-    return { needsSetup: !existing };
+    const [existingUser] = await this.db.select({ id: users.id }).from(users).limit(1);
+    const [existingSite] = await this.db.select({ id: sites.id }).from(sites).limit(1);
+    return { needsSetup: !existingUser || !existingSite };
   }
 
   async init(
@@ -43,8 +43,9 @@ export class SetupService {
       // Re-check inside the transaction rather than trusting a prior
       // GET /setup/status call — otherwise two concurrent requests could
       // both pass the check and both create a super admin.
-      const [existing] = await tx.select({ id: users.id }).from(users).limit(1);
-      if (existing) {
+      const [existingUser] = await tx.select({ id: users.id }).from(users).limit(1);
+      const [existingSite] = await tx.select({ id: sites.id }).from(sites).limit(1);
+      if (existingUser || existingSite) {
         throw new ConflictException('Setup already completed');
       }
 
@@ -64,9 +65,12 @@ export class SetupService {
       const [createdSite] = await tx
         .insert(sites)
         .values({
-          slug: dto.site.slug,
+          // Slug remains an internal filesystem-safe identifier. The public
+          // URL is always the configured domain, never /{slug}.
+          slug: dto.site.domain.replace(/\./g, '-').slice(0, 100),
           name: dto.site.name,
           domain: dto.site.domain,
+          isActive: true,
         })
         .returning();
 
@@ -85,6 +89,7 @@ export class SetupService {
     });
 
     const session = await this.authService.createSession(user, meta);
+    await this.buildProducer.enqueue(site.id, user.id);
     return {
       user: session.user,
       site,

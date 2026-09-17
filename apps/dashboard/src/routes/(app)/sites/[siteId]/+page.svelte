@@ -21,7 +21,7 @@
 			<p class="text-sm text-muted-foreground">/{data.site.slug} · {data.site.domain ?? 'Belum ada domain'}</p>
 		</div>
 		<div class="flex shrink-0 gap-2">
-			<Button href={siteVisitUrl(data.site.slug)} target="_blank" rel="noopener noreferrer" variant="outline">
+			<Button href={siteVisitUrl(data.site)} target="_blank" rel="noopener noreferrer" variant="outline">
 				<ExternalLink class="size-4" /> Kunjungi Situs
 			</Button>
 			{#if canManageSite(data.user, data.sites, data.site.id)}

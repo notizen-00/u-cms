@@ -2,17 +2,15 @@ import type { LayoutServerLoad } from './$types';
 import { listSites } from '$lib/server/api/sites';
 import { getHomepagePage } from '$lib/server/api/pages';
 import { listThemes } from '$lib/server/api/themes';
-import { ACTIVE_SITE_COOKIE_NAME } from '$lib/server/env';
 
 export const load: LayoutServerLoad = async (event) => {
 	// hooks.server.ts already redirected to /login when there's no session.
 	const user = event.locals.user!;
 	const sites = await listSites(event);
 
-	let activeSiteId = event.cookies.get(ACTIVE_SITE_COOKIE_NAME) ?? null;
-	if (!activeSiteId || !sites.some((site) => site.id === activeSiteId)) {
-		activeSiteId = sites[0]?.id ?? null;
-	}
+	// The backend permits exactly one site. Do not let a browser cookie select a
+	// different site; the database record is the source of truth for the active site.
+	const activeSiteId = sites[0]?.id ?? null;
 
 	const activeSite = sites.find((site) => site.id === activeSiteId) ?? null;
 

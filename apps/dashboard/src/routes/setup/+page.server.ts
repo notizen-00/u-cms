@@ -4,7 +4,7 @@ import { initializeSetup } from '$lib/server/api/setup';
 import { ApiError } from '$lib/server/api/client';
 import type { ApiFieldError, SetupInitInput } from '$lib/types';
 
-const SLUG_PATTERN = /^[a-z0-9-]+$/;
+const DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 function fieldError(path: string, message: string): ApiFieldError {
 	return { path, message };
@@ -23,7 +23,6 @@ export const actions: Actions = {
 		const adminPassword = String(formData.get('adminPassword') ?? '');
 		const confirmPassword = String(formData.get('confirmPassword') ?? '');
 		const siteName = String(formData.get('siteName') ?? '').trim();
-		const siteSlug = String(formData.get('siteSlug') ?? '').trim().toLowerCase();
 		const siteDomain = String(formData.get('siteDomain') ?? '').trim().toLowerCase();
 
 		const values = {
@@ -31,7 +30,6 @@ export const actions: Actions = {
 			adminName,
 			adminEmail,
 			siteName,
-			siteSlug,
 			siteDomain
 		};
 
@@ -49,11 +47,8 @@ export const actions: Actions = {
 			errors.push(fieldError('confirmPassword', 'Konfirmasi password tidak sama.'));
 		}
 		if (!siteName) errors.push(fieldError('site.name', 'Nama website wajib diisi.'));
-		if (!siteSlug) {
-			errors.push(fieldError('site.slug', 'Slug website wajib diisi.'));
-		} else if (!SLUG_PATTERN.test(siteSlug)) {
-			errors.push(fieldError('site.slug', 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.'));
-		}
+		if (!siteDomain) errors.push(fieldError('site.domain', 'Nama domain wajib diisi.'));
+		else if (!DOMAIN_PATTERN.test(siteDomain)) errors.push(fieldError('site.domain', 'Masukkan hostname valid, misalnya cms.unej.ac.id.'));
 
 		if (errors.length > 0) {
 			return fail(400, { values, errors, step: 3 });
@@ -67,8 +62,7 @@ export const actions: Actions = {
 			},
 			site: {
 				name: siteName,
-				slug: siteSlug,
-				...(siteDomain ? { domain: siteDomain } : {})
+				domain: siteDomain
 			}
 		};
 

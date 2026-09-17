@@ -11,19 +11,18 @@ export class AtomicDeployService {
 
   constructor(private readonly config: AppConfigService) {}
 
-  siteDir(slug: string): string {
-    // Must be absolute: a relative symlink target resolves relative to the
-    // symlink's own directory (not the process cwd), which would otherwise
-    // point `current` at a nonexistent nested path.
-    return resolve(this.config.buildOutputDir, slug);
+  siteDir(): string {
+    // One CMS instance publishes one active site. Keeping releases directly
+    // below BUILD_OUTPUT_DIR makes nginx independent from a slug/domain lookup.
+    return resolve(this.config.buildOutputDir);
   }
 
-  releaseDir(slug: string, buildId: string): string {
-    return join(this.siteDir(slug), 'releases', buildId);
+  releaseDir(buildId: string): string {
+    return join(this.siteDir(), 'releases', buildId);
   }
 
-  async prepareReleaseDir(slug: string, buildId: string): Promise<string> {
-    const dir = this.releaseDir(slug, buildId);
+  async prepareReleaseDir(buildId: string): Promise<string> {
+    const dir = this.releaseDir(buildId);
     await mkdir(dir, { recursive: true });
     return dir;
   }
@@ -36,9 +35,9 @@ export class AtomicDeployService {
    * we fall back to unlink-then-rename there (not atomic, but this path only
    * runs on a Windows host, not in production).
    */
-  async activate(slug: string, buildId: string): Promise<string> {
-    const siteDir = this.siteDir(slug);
-    const releaseDir = this.releaseDir(slug, buildId);
+  async activate(buildId: string): Promise<string> {
+    const siteDir = this.siteDir();
+    const releaseDir = this.releaseDir(buildId);
     const currentPath = join(siteDir, 'current');
     const tmpLinkPath = join(siteDir, `current.tmp-${buildId}`);
 
@@ -56,15 +55,14 @@ export class AtomicDeployService {
       await rename(tmpLinkPath, currentPath);
     }
 
-    await this.pruneOldReleases(slug, buildId);
+    await this.pruneOldReleases(buildId);
     return currentPath;
   }
 
   private async pruneOldReleases(
-    slug: string,
     keepBuildId: string,
   ): Promise<void> {
-    const releasesDir = join(this.siteDir(slug), 'releases');
+    const releasesDir = join(this.siteDir(), 'releases');
     let entries: string[];
     try {
       entries = await readdir(releasesDir);

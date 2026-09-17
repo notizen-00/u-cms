@@ -81,7 +81,7 @@ export class BuildProcessor extends WorkerHost {
       const siteForms = await this.fetchActiveForms(siteId, activePluginIds);
       const menusByLocation = await this.buildMenus(siteId, publishedPages);
 
-      const outputDir = await this.deploy.prepareReleaseDir(site.slug, buildId);
+      const outputDir = await this.deploy.prepareReleaseDir(buildId);
       const renderer: SiteRenderer =
         resolveThemeRenderKind(site.themeId) === 'svelte' ? this.svelteRenderer : this.etaRenderer;
       await renderer.render(outputDir, {
@@ -109,7 +109,7 @@ export class BuildProcessor extends WorkerHost {
         pluginAssets: collectPluginAssets(activePlugins, 'site'),
       });
 
-      const currentPath = await this.deploy.activate(site.slug, buildId);
+      const currentPath = await this.deploy.activate(buildId);
 
       await this.db
         .update(builds)

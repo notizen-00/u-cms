@@ -119,7 +119,7 @@
 
 	{#if activeSite}
 		<a
-			href={siteVisitUrl(activeSite.slug)}
+			href={siteVisitUrl(activeSite)}
 			target="_blank"
 			rel="noopener noreferrer"
 			class="flex h-10 shrink-0 items-center justify-between border-b border-[#e5eaf1] bg-[#f6f8fc] px-4 text-[12px] font-medium text-[#075985] transition-colors hover:bg-[#eef2fb]"

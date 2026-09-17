@@ -19,8 +19,7 @@ export interface SetupInitInput {
 	};
 	site: {
 		name: string;
-		slug: string;
-		domain?: string;
+		domain: string;
 	};
 }
 

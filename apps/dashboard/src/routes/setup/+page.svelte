@@ -12,7 +12,6 @@
 	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import Globe2 from '@lucide/svelte/icons/globe-2';
 	import KeyRound from '@lucide/svelte/icons/key-round';
-	import Link2 from '@lucide/svelte/icons/link-2';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import LockKeyhole from '@lucide/svelte/icons/lock-keyhole';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -31,9 +30,7 @@
 	let adminPassword = $state('');
 	let confirmPassword = $state('');
 	let siteName = $state(form?.values?.siteName ?? '');
-	let siteSlug = $state(form?.values?.siteSlug ?? '');
 	let siteDomain = $state(form?.values?.siteDomain ?? '');
-	let slugEdited = $state(Boolean(form?.values?.siteSlug));
 	let showPassword = $state(false);
 	let showConfirmPassword = $state(false);
 
@@ -43,19 +40,8 @@
 		{ number: 3, eyebrow: 'Langkah 3', label: 'Website Pertama' }
 	];
 
-	function slugify(value: string): string {
-		return value
-			.toLowerCase()
-			.normalize('NFKD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '')
-			.replace(/-{2,}/g, '-');
-	}
-
 	function updateSiteName(value: string): void {
 		siteName = value;
-		if (!slugEdited) siteSlug = slugify(value);
 	}
 
 	function passwordScore(value: string): number {
@@ -111,15 +97,15 @@
 	function validateFinalStep(event: SubmitEvent): void {
 		localMessage = '';
 
-		if (!siteName.trim() || !siteSlug.trim()) {
+		if (!siteName.trim() || !siteDomain.trim()) {
 			event.preventDefault();
-			localMessage = 'Nama dan slug website wajib diisi.';
+			localMessage = 'Nama website dan domain wajib diisi.';
 			return;
 		}
 
-		if (!/^[a-z0-9-]+$/.test(siteSlug)) {
+		if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(siteDomain)) {
 			event.preventDefault();
-			localMessage = 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.';
+			localMessage = 'Masukkan hostname valid, misalnya cms.unej.ac.id.';
 		}
 	}
 </script>
@@ -154,7 +140,6 @@
 			<input type="hidden" name="adminPassword" value={adminPassword} />
 			<input type="hidden" name="confirmPassword" value={confirmPassword} />
 			<input type="hidden" name="siteName" value={siteName} />
-			<input type="hidden" name="siteSlug" value={siteSlug} />
 			<input type="hidden" name="siteDomain" value={siteDomain} />
 
 			<div
@@ -449,25 +434,8 @@
 								</div>
 
 								<div class="space-y-1.5">
-									<label for="site-slug" class="text-[11px] font-semibold text-[#17384f]">Slug Website</label>
-									<div class="relative">
-										<Link2 class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#7a8b98]" />
-										<input
-											id="site-slug"
-											bind:value={siteSlug}
-											oninput={() => (slugEdited = true)}
-											pattern="^[a-z0-9-]+$"
-											placeholder="fkm"
-											class="h-10 w-full rounded-none border border-[#ccd8e2] bg-white pr-3 pl-10 text-[12px] text-[#17384f] outline-none transition placeholder:text-[#91a0ac] focus:border-[#006497] focus:ring-2 focus:ring-[#006497]/10"
-										/>
-									</div>
-									<p class="text-[10px] text-[#728592]">Huruf kecil, angka, dan tanda hubung. Contoh: <code>fkm</code>.</p>
-									<FormFieldError errors={form?.errors} field="site.slug" />
-								</div>
-
-								<div class="space-y-1.5">
 									<label for="site-domain" class="text-[11px] font-semibold text-[#17384f]">
-										Domain <span class="font-normal text-[#728592]">(Opsional)</span>
+										Domain
 									</label>
 									<div class="relative">
 										<CircleGauge class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#7a8b98]" />
@@ -478,7 +446,7 @@
 											class="h-10 w-full rounded-none border border-[#ccd8e2] bg-white pr-3 pl-10 text-[12px] text-[#17384f] outline-none transition placeholder:text-[#91a0ac] focus:border-[#006497] focus:ring-2 focus:ring-[#006497]/10"
 										/>
 									</div>
-									<p class="text-[10px] text-[#728592]">Masukkan hostname tanpa <code>https://</code>.</p>
+									<p class="text-[10px] text-[#728592]">Masukkan hostname tanpa <code>https://</code>, misalnya <code>cms.unej.ac.id</code>.</p>
 									<FormFieldError errors={form?.errors} field="site.domain" />
 								</div>
 
@@ -493,7 +461,7 @@
 										<div>
 											<p class="text-[#7a8d9a]">Website</p>
 											<p class="mt-0.5 font-semibold text-[#17384f]">{siteName || 'Belum diisi'}</p>
-											<p class="text-[#5e7382]">/{siteSlug || 'slug-website'}</p>
+											<p class="text-[#5e7382]">{siteDomain || 'domain-belum-diisi'}</p>
 										</div>
 									</div>
 								</div>
