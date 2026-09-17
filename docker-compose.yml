@@ -105,8 +105,8 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
       MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8075/media}
-      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8075/api}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8080/media}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8080/api}
     volumes:
       - site_output:/sites
     healthcheck:
@@ -143,7 +143,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-unej_cms}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-unej_cms_secret}
       MINIO_BUCKET: ${MINIO_BUCKET:-unej-cms-media}
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8075/media}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:8080/media}
     volumes:
       - site_output:/sites
 
@@ -157,7 +157,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      NODE_OPTIONS: --max-old-space-size=6144
+      NODE_OPTIONS: --max-old-space-size=1024
       PORT: 3000
       BODY_SIZE_LIMIT: 32M
       ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8080}
