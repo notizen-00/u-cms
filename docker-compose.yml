@@ -168,11 +168,12 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=6144
       PORT: 3000
-      BODY_SIZE_LIMIT: 16M
-      ORIGIN: ${ADMIN_ORIGIN:-http://localhost:8075}
-      PUBLIC_API_URL: http://api:3000
-      PUBLIC_SITE_HOST: ${PUBLIC_SITE_HOST:-localhost:8075}
+      BODY_SIZE_LIMIT: 32M
+      ORIGIN: ${ADMIN_ORIGIN}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-/api}
+      PUBLIC_SITE_HOST: ${PUBLIC_SITE_HOST}
     healthcheck:
       test:
         - CMD
