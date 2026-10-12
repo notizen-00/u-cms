@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Native static-site preview for builder output (the nginx equivalent in Docker). */
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
+import { createServer, get } from 'node:http';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -133,9 +133,32 @@ const server = createServer((request, response) => {
 });
 
 server.on('error', (error) => {
-	if (error.code === 'EADDRINUSE') console.error(`Static preview port ${port} is already in use.`);
-	else console.error(error);
-	process.exit(1);
+	if (error.code !== 'EADDRINUSE') {
+		console.error(error);
+		process.exit(1);
+		return;
+	}
+
+	// Reuse a previous preview for this project, but keep unrelated port
+	// conflicts fatal so site serving is not silently lost.
+	const request = get({ host, port, path: '/', timeout: 1500 }, (response) => {
+		let body = '';
+		response.setEncoding('utf8');
+		response.on('data', (chunk) => (body += chunk));
+		response.on('end', () => {
+			if (response.statusCode === 200 && body.includes('UNEJ CMS static preview.')) {
+				console.log(`Static site preview already running at http://{site-slug}.localhost:${port}/`);
+				process.exit(0);
+			}
+			console.error(`Static preview port ${port} is already in use by another service.`);
+			process.exit(1);
+		});
+	});
+	request.on('timeout', () => request.destroy(new Error('Preview health check timed out')));
+	request.on('error', () => {
+		console.error(`Static preview port ${port} is already in use by another service.`);
+		process.exit(1);
+	});
 });
 
 server.listen(port, host, () => {
