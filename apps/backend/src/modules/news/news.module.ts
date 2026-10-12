@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { BuilderQueueModule } from '../builder/builder-queue.module';
-import { SitesModule } from '../sites/sites.module';
+import { SitePermissionGuard } from '../../common/guards/site-permission.guard';
 import { NewsController } from './news.controller';
 import { NewsService } from './news.service';
+import { BuilderQueueModule } from '../builder/builder-queue.module';
 
 @Module({
-  imports: [AuthModule, SitesModule, BuilderQueueModule],
+  imports: [BuilderQueueModule],
   controllers: [NewsController],
-  providers: [NewsService],
-  exports: [NewsService],
+  providers: [NewsService, SitePermissionGuard],
 })
 export class NewsModule {}

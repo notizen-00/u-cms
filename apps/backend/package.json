@@ -12,6 +12,7 @@
     "//dev": "Root `pnpm dev:watch` entry. Starts API, builder worker, and native static-site preview together.",
     "dev": "pnpm run \"/^dev:(api|worker|preview)$/\"",
     "dev:api": "nest start --watch",
+    "db:delete:all": "ts-node -r tsconfig-paths/register src/database/delete-all.ts",
     "dev:worker": "ts-node -r tsconfig-paths/register src/main-worker.ts",
     "dev:preview": "node ../../scripts/static-preview.mjs",
     "start": "nest start",

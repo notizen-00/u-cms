@@ -13,6 +13,7 @@
     "theme:dev": "node scripts/theme-dev.mjs",
     "start": "node scripts/start.mjs",
     "build": "pnpm -r run build",
+    "delete:all": "pnpm --filter unej-cms run db:delete:all",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
